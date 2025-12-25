@@ -1,0 +1,32 @@
+query GetCurrentUserData {
+  getMyProfile {
+    id
+    first_name: firstName
+    last_name: lastName
+    email
+    role
+    profile_image: profileImage
+    organization_name: organizationName
+    organization_number: organizationNumber
+    organization_code: organizationCode
+    is_onboarding_complete: isOnboardingComplete
+    is_onboarding_email_sent: isOnboardingEmailSent
+    folders {
+      id
+      name
+      isActive
+    }
+    roleBranchAssignments {
+      roleId
+      roleName
+      permissions
+      branchInfo {
+        id
+        name
+      }
+      assignAll
+    }
+    licenses
+  }
+}
+

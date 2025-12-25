@@ -1,0 +1,8 @@
+mutation UploadMultiple($files: [Upload!]!, $branchId: String!) {
+  uploadFile(input: { files: $files, branchId: $branchId }) {
+    success
+    message
+    branchId
+    folderId
+  }
+}

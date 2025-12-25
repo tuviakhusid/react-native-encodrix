@@ -1,24 +1,32 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
+import { Stack } from "expo-router";
+import { ApolloProvider } from "@apollo/client";
+import { StatusBar } from "expo-status-bar";
+import { apolloClient } from "../src/lib/apollo/apolloClient";
+import { colors } from "../src/constants/theme";
 
-import { useColorScheme } from '@/hooks/use-color-scheme';
-
-export const unstable_settings = {
-  anchor: '(tabs)',
-};
+// Import gesture handler at the top level (required for React Native)
+import "react-native-gesture-handler";
+import "react-native-reanimated";
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-      </Stack>
+    <ApolloProvider client={apolloClient}>
       <StatusBar style="auto" />
-    </ThemeProvider>
+      <Stack
+        screenOptions={{
+          headerStyle: {
+            backgroundColor: colors.primary.brandGradient[0],
+          },
+          headerTintColor: colors.background.light,
+          headerTitleStyle: {
+            fontWeight: "600",
+          },
+        }}
+      >
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="login" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      </Stack>
+    </ApolloProvider>
   );
 }

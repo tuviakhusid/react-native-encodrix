@@ -1,0 +1,55 @@
+query GetProcessedDocuments(
+  $status: StringFilter
+  $stageStatus: StringFilter
+  $query: String
+  $page: Int
+  $pageSize: Int
+  $fromDate: String
+  $toDate: String
+) {
+  documentsByStatus(
+    status: $status
+    stageStatus: $stageStatus
+    q: $query
+    page: $page
+    pageSize: $pageSize
+    fromDate: $fromDate
+    toDate: $toDate
+  ) {
+    documents {
+      id
+      extraData
+      googleDriveUrl
+      googleDriveUploaded
+      currentStageName
+      currentStageType
+      folderId
+      createdAt
+      invoiceDataId
+      s3Urls
+      updatedAt
+      workflowStatus
+      documentName
+      fileFormat
+      businessName
+      documentType
+      documentHighLevelType
+      workflowName
+      workflowDocumentInstanceId
+      commentCount
+      uploadedByDetails
+      issueDate
+    }
+    noWorkflowCount
+    totalDocuments
+    inProgressCount
+    completedCount
+    onHoldCount
+    pendingCount
+    stageCount
+    rejectedCount
+    page
+    pageSize
+    totalPages
+  }
+}
