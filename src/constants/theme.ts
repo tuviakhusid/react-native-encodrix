@@ -1,9 +1,9 @@
-// Theme colors EXACTLY from encodrix brand identity
+// Theme colors EXACTLY from encodrix brand identity - TopBar logo-bar gradient
 export const colors = {
     primary: {
-        DEFAULT: '#2563eb', // Primary button color (bg-[#2563eb])
-        light: '#3b82f6', // Light blue (#3b82f6)
-        dark: '#1e40af', // Dark blue
+        DEFAULT: '#1e3a8a', // Primary button color - from TopBar logo-bar gradient end (#2c5282)
+        light: '#3b82f6', // Light blue for accents
+        dark: '#1e3a8a', // Dark blue - from TopBar logo-bar gradient start (#1e3a8a)
         bg: '#dbeafe', // Blue-100 background
         text: '#1e40af', // Blue-700 text
         brand: '#2c5282', // Brand text color (.brand-text-primary)

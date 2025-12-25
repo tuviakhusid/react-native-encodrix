@@ -44,7 +44,9 @@ const errorLink = onError(({ graphQLErrors, networkError }) => {
 
 export const apolloClient = new ApolloClient({
   link: from([errorLink, authLink, uploadLink]),
-  cache: new InMemoryCache(),
+  cache: new InMemoryCache({
+    typePolicies: {},
+  }),
   defaultOptions: {
     watchQuery: {
       errorPolicy: 'all',

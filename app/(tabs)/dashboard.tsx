@@ -15,6 +15,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@apollo/client';
 import { gql } from '@apollo/client';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import authService from '../../src/lib/services/auth.service';
 import { colors, spacing, borderRadius, typography, shadows } from '../../src/constants/theme';
 
@@ -71,6 +72,7 @@ interface Document {
 
 export default function DashboardScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
 
   const { data, loading, error, refetch } = useQuery(GET_PROCESSED_DOCUMENTS, {
@@ -158,10 +160,13 @@ export default function DashboardScreen() {
     const statusColors = getStatusColor(item.workflowStatus || 'pending');
 
     return (
-      <TouchableOpacity style={styles.documentCard}>
+      <TouchableOpacity style={styles.documentCard} activeOpacity={0.7}>
         <View style={styles.documentHeader}>
+          <View style={styles.documentIconContainer}>
+            <Ionicons name="document-text" size={24} color={colors.primary.DEFAULT} />
+          </View>
           <View style={styles.documentInfo}>
-              <Text style={styles.documentName} numberOfLines={1}>
+            <Text style={styles.documentName} numberOfLines={1}>
               {item.documentName || 'Untitled Invoice'}
             </Text>
             <Text style={styles.documentType}>{item.documentType || 'Invoice'}</Text>
@@ -174,11 +179,11 @@ export default function DashboardScreen() {
         </View>
         <View style={styles.documentFooter}>
           <View style={styles.footerItem}>
-            <Ionicons name="business" size={14} color={colors.text.secondary} />
+            <Ionicons name="business" size={16} color={colors.text.secondary} />
             <Text style={styles.footerText}>{item.businessName || 'N/A'}</Text>
           </View>
           <View style={styles.footerItem}>
-            <Ionicons name="calendar" size={14} color={colors.text.secondary} />
+            <Ionicons name="calendar" size={16} color={colors.text.secondary} />
             <Text style={styles.footerText}>{formatDate(item.createdAt)}</Text>
           </View>
         </View>
@@ -211,23 +216,14 @@ export default function DashboardScreen() {
 
   return (
     <View style={styles.container}>
-      <ScrollView
-        style={styles.scrollView}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.primary.DEFAULT}
-          />
-        }
-      >
-        {/* Header with Greeting */}
-        <View style={styles.header}>
+      {/* Sticky Header with Greeting */}
+      <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
           <View style={styles.headerTop}>
             <View style={styles.greetingSection}>
               <TouchableOpacity 
                 style={styles.avatarContainer}
                 onPress={() => setShowProfileMenu(true)}
+                activeOpacity={0.7}
               >
                 {getUserProfile()?.profile_image ? (
                   <Image 
@@ -244,51 +240,66 @@ export default function DashboardScreen() {
               </TouchableOpacity>
               <View style={styles.greetingText}>
                 <Text style={styles.greeting}>{getGreeting()} {getUserName()}</Text>
-                <Text style={styles.greetingSubtitle}>Invoice Processing Dashboard</Text>
+                <Text style={styles.greetingSubtitle}>Your Daily Invoice Goals</Text>
               </View>
             </View>
             <View style={styles.headerActions}>
-              <TouchableOpacity style={styles.iconButton}>
-                <Ionicons name="search-outline" size={24} color={colors.text.primary} />
+              <TouchableOpacity style={styles.iconButton} activeOpacity={0.7}>
+                <Ionicons name="search-outline" size={20} color={colors.text.primary} />
               </TouchableOpacity>
             </View>
           </View>
         </View>
 
-        {/* Stats Cards - Only 2 cards */}
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: 90 + insets.top }]}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary.DEFAULT}
+          />
+        }
+      >
+        {/* Stats Cards - Total Invoices and Data Extraction */}
         <View style={styles.statsContainer}>
-          <TouchableOpacity 
-            style={styles.statCard}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.statIconContainer, styles.statIconBlue]}>
-              <Ionicons name="receipt" size={20} color={colors.stats.blue.text} />
+          <View style={styles.statCard}>
+            <View style={styles.statHeader}>
+              <Text style={styles.statTitle}>Total Invoice</Text>
+              <View style={styles.statArrowCircle}>
+                <Ionicons name="arrow-up" size={12} color={colors.text.primary} />
+              </View>
             </View>
-            <View style={styles.statContent}>
-              <Text style={styles.statValue}>{totalDocuments}</Text>
-              <Text style={styles.statLabel}>Total Invoices</Text>
+            <Text style={styles.statValue}>{totalDocuments}+</Text>
+            <Text style={styles.statSubtext}>Last 24 Hours</Text>
+            <View style={styles.statAvatars}>
+              <View style={[styles.statAvatar, styles.statAvatar1]} />
+              <View style={[styles.statAvatar, styles.statAvatar2]} />
+              <View style={[styles.statAvatar, styles.statAvatar3]} />
             </View>
-          </TouchableOpacity>
+          </View>
 
-          <TouchableOpacity 
-            style={styles.statCard}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.statIconContainer, styles.statIconYellow]}>
-              <Ionicons name="server" size={20} color={colors.stats.yellow.text} />
+          <View style={styles.statCard}>
+            <View style={styles.statHeader}>
+              <Text style={styles.statTitle}>Data Extraction</Text>
+              <View style={styles.statArrowCircle}>
+                <Ionicons name="arrow-up" size={12} color={colors.text.primary} />
+              </View>
             </View>
-            <View style={styles.statContent}>
-              <Text style={styles.statValue}>{dataExtractionCount}</Text>
-              <Text style={styles.statLabel}>Data Extraction</Text>
+            <Text style={styles.statValue}>{dataExtractionCount}+</Text>
+            <Text style={styles.statSubtext}>In Progress</Text>
+            <View style={styles.statChart}>
+              <Ionicons name="server" size={20} color={colors.background.light} />
             </View>
-          </TouchableOpacity>
+          </View>
         </View>
 
         {/* Invoices Section */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>My Invoices</Text>
+          <Text style={styles.sectionTitle}>My Invoice Record</Text>
           <Text style={styles.sectionSubtitle}>
-            Track and manage invoices being processed for data extraction and ERP integration
+            An invoice maker app is a powerful tool designed to simplify billing and payment.
           </Text>
         </View>
 
@@ -394,6 +405,9 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
+  scrollContent: {
+    paddingBottom: 100, // Extra padding for bottom navigation
+  },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -401,11 +415,15 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   header: {
-    backgroundColor: colors.background.DEFAULT,
-    paddingTop: spacing.xl,
-    paddingBottom: spacing.lg,
+    backgroundColor: colors.background.light,
+    paddingBottom: spacing.md,
     paddingHorizontal: spacing.lg,
     ...shadows.sm,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 1000,
   },
   headerTop: {
     flexDirection: 'row',
@@ -446,13 +464,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   greeting: {
-    fontSize: typography.sizes.xl,
-    fontWeight: typography.weights.bold,
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.medium,
     color: colors.text.primary,
-    marginBottom: spacing.xs,
+    marginBottom: spacing.xs / 2,
   },
   greetingSubtitle: {
-    fontSize: typography.sizes.sm,
+    fontSize: typography.sizes.xs,
     color: colors.text.secondary,
   },
   headerActions: {
@@ -470,7 +488,8 @@ const styles = StyleSheet.create({
   statsContainer: {
     flexDirection: 'row',
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.lg,
     gap: spacing.md,
     justifyContent: 'space-between',
   },
@@ -478,46 +497,76 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
     maxWidth: '48%',
-    backgroundColor: colors.background.light,
-    borderRadius: 12,
+    backgroundColor: colors.primary.DEFAULT,
+    borderRadius: borderRadius.md,
     padding: spacing.md,
-    ...shadows.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border.light,
+    ...shadows.sm,
+    position: 'relative',
+    minHeight: 140,
   },
-  statIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  statHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: spacing.sm,
+  },
+  statTitle: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.medium,
+    color: colors.background.light,
+    opacity: 0.95,
+  },
+  statArrowCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.background.light,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: spacing.md,
-  },
-  statIconBlue: {
-    backgroundColor: colors.stats.blue.bg,
-  },
-  statIconYellow: {
-    backgroundColor: colors.stats.yellow.bg,
-  },
-  statContent: {
-    flex: 1,
   },
   statValue: {
-    fontSize: typography.sizes.xl,
+    fontSize: typography.sizes.xxxl,
     fontWeight: typography.weights.bold,
-    color: colors.text.primary,
-    marginBottom: 2,
+    color: colors.background.light,
+    marginBottom: spacing.xs,
   },
-  statLabel: {
+  statSubtext: {
     fontSize: typography.sizes.xs,
-    color: colors.text.secondary,
-    fontWeight: typography.weights.bold,
+    color: colors.background.light,
+    opacity: 0.85,
+  },
+  statAvatars: {
+    position: 'absolute',
+    bottom: spacing.md,
+    right: spacing.md,
+    flexDirection: 'row',
+  },
+  statAvatar: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: colors.background.light,
+    borderWidth: 2,
+    borderColor: colors.primary.DEFAULT,
+    marginLeft: -6,
+  },
+  statAvatar1: {
+    zIndex: 3,
+  },
+  statAvatar2: {
+    zIndex: 2,
+  },
+  statAvatar3: {
+    zIndex: 1,
+  },
+  statChart: {
+    position: 'absolute',
+    bottom: spacing.md,
+    right: spacing.md,
   },
   sectionHeader: {
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
+    paddingTop: spacing.sm,
     paddingBottom: spacing.md,
   },
   sectionTitle: {
@@ -540,13 +589,24 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
     padding: spacing.md,
     marginBottom: spacing.md,
-    ...shadows.md,
+    ...shadows.sm,
+    borderWidth: 1,
+    borderColor: colors.border.light,
   },
   documentHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  documentIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: colors.primary.lightGradient[0],
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing.sm,
   },
   documentInfo: {
     flex: 1,
@@ -554,9 +614,9 @@ const styles = StyleSheet.create({
   },
   documentName: {
     fontSize: typography.sizes.md,
-    fontWeight: typography.weights.semibold,
+    fontWeight: typography.weights.bold,
     color: colors.text.primary,
-    marginBottom: spacing.xs,
+    marginBottom: spacing.xs / 2,
   },
   documentType: {
     fontSize: typography.sizes.sm,

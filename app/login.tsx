@@ -84,81 +84,55 @@ export default function LoginScreen() {
               <View style={styles.logoIcon}>
                 <Ionicons
                   name="document-text"
-                  size={40}
+                  size={32}
                   color={colors.primary.DEFAULT}
                 />
               </View>
             </View>
-            <Text style={styles.greeting}>HI, Welcome Back</Text>
+            <Text style={styles.greeting}>Hi, Welcome Back</Text>
             <Text style={styles.subtitle}>Sign in with your credentials</Text>
           </View>
 
           <View style={styles.form}>
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Organization Code (Optional)</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons
-                  name="business-outline"
-                  size={20}
-                  color={colors.text.secondary}
-                  style={styles.inputIcon}
-                />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter organization code"
-                  placeholderTextColor={colors.text.muted}
-                  value={organizationCode}
-                  onChangeText={setOrganizationCode}
-                  autoCapitalize="none"
-                  autoComplete="off"
-                />
-              </View>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter organization code"
+                placeholderTextColor={colors.text.muted}
+                value={organizationCode}
+                onChangeText={setOrganizationCode}
+                autoCapitalize="none"
+                autoComplete="off"
+              />
             </View>
 
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Email Address or Username</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons
-                  name={isEmail(identifier) ? "mail-outline" : "person-outline"}
-                  size={20}
-                  color={colors.text.secondary}
-                  style={styles.inputIcon}
-                />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter email address or username"
-                  placeholderTextColor={colors.text.muted}
-                  value={identifier}
-                  onChangeText={setIdentifier}
-                  keyboardType={
-                    isEmail(identifier) ? "email-address" : "default"
-                  }
-                  autoCapitalize="none"
-                  autoComplete={isEmail(identifier) ? "email" : "username"}
-                />
-              </View>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter email address or username"
+                placeholderTextColor={colors.text.muted}
+                value={identifier}
+                onChangeText={setIdentifier}
+                keyboardType={isEmail(identifier) ? "email-address" : "default"}
+                autoCapitalize="none"
+                autoComplete={isEmail(identifier) ? "email" : "username"}
+              />
             </View>
 
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Password</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons
-                  name="lock-closed-outline"
-                  size={20}
-                  color={colors.text.secondary}
-                  style={styles.inputIcon}
-                />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter Password"
-                  placeholderTextColor={colors.text.muted}
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                  autoCapitalize="none"
-                  autoComplete="password"
-                />
-              </View>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter Password"
+                placeholderTextColor={colors.text.muted}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                autoCapitalize="none"
+                autoComplete="password"
+              />
             </View>
 
             <View style={styles.optionsRow}>
@@ -188,9 +162,10 @@ export default function LoginScreen() {
             </View>
 
             <TouchableOpacity
-              style={[styles.button, loading && styles.buttonDisabled]}
               onPress={handleLogin}
               disabled={loading}
+              activeOpacity={0.8}
+              style={[styles.button, loading && styles.buttonDisabled]}
             >
               <Text style={styles.buttonText}>
                 {loading ? "Signing in..." : "Sign In"}
@@ -217,20 +192,19 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   header: {
-    marginBottom: spacing.xxl,
+    marginBottom: spacing.xl,
     alignItems: "center",
   },
   logoContainer: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   logoIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 20,
-    backgroundColor: colors.background.light,
+    width: 56,
+    height: 56,
+    borderRadius: 12,
+    backgroundColor: colors.primary.lightGradient[0],
     justifyContent: "center",
     alignItems: "center",
-    ...shadows.md,
   },
   greeting: {
     fontSize: typography.sizes.xxl,
@@ -239,63 +213,57 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   subtitle: {
-    fontSize: typography.sizes.md,
+    fontSize: typography.sizes.sm,
     color: colors.text.secondary,
     textAlign: "center",
   },
   form: {
     width: "100%",
-    backgroundColor: colors.primary.lightGradient[0], // #f0f5ff - Light blue background matching LoginForm
+    backgroundColor: colors.background.light,
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
     ...shadows.sm,
   },
   inputContainer: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   label: {
     fontSize: typography.sizes.sm,
     fontWeight: typography.weights.medium,
     color: colors.text.primary,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
-  inputWrapper: {
-    flexDirection: "row",
-    alignItems: "center",
+  input: {
+    width: "100%",
+    padding: spacing.md,
+    fontSize: typography.sizes.md,
+    color: colors.text.primary,
     backgroundColor: colors.background.light,
     borderWidth: 1,
     borderColor: colors.border.DEFAULT,
     borderRadius: borderRadius.md,
-    ...shadows.sm,
-  },
-  inputIcon: {
-    marginLeft: spacing.md,
-  },
-  input: {
-    flex: 1,
-    padding: spacing.md,
-    fontSize: typography.sizes.md,
-    color: colors.text.primary,
   },
   optionsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: spacing.lg,
+    marginTop: spacing.xs,
   },
   rememberMeContainer: {
     flexDirection: "row",
     alignItems: "center",
   },
   checkbox: {
-    width: 20,
-    height: 20,
+    width: 22,
+    height: 22,
     borderWidth: 2,
     borderColor: colors.border.DEFAULT,
-    borderRadius: 4,
+    borderRadius: 6,
     marginRight: spacing.sm,
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: colors.background.light,
   },
   checkboxChecked: {
     backgroundColor: colors.primary.DEFAULT,
@@ -309,11 +277,12 @@ const styles = StyleSheet.create({
   rememberMeText: {
     fontSize: typography.sizes.sm,
     color: colors.text.secondary,
+    fontWeight: typography.weights.medium,
   },
   forgotPasswordText: {
     fontSize: typography.sizes.sm,
     color: colors.primary.DEFAULT,
-    fontWeight: typography.weights.medium,
+    fontWeight: typography.weights.semibold,
   },
   button: {
     backgroundColor: colors.primary.DEFAULT,
@@ -322,8 +291,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     alignItems: "center",
     justifyContent: "center",
-    ...shadows.md,
-    marginBottom: spacing.lg,
+    marginTop: spacing.md,
+    ...shadows.sm,
   },
   buttonDisabled: {
     opacity: 0.6,
