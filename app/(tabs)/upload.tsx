@@ -357,24 +357,30 @@ export default function UploadScreen() {
     <View style={styles.container}>
       {/* Sticky Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
-        <View style={styles.headerIcon}>
-          <Ionicons
-            name="document-attach"
-            size={28}
-            color={colors.primary.DEFAULT}
-          />
+        <View style={styles.headerTop}>
+          <View style={styles.greetingSection}>
+            <View style={styles.headerIcon}>
+              <Ionicons
+                name="document-attach"
+                size={24}
+                color={colors.primary.DEFAULT}
+              />
+            </View>
+            <View style={styles.greetingText}>
+              <Text style={styles.greeting}>Upload Invoice</Text>
+              <Text style={styles.greetingSubtitle}>
+                Capture or select invoice images for data extraction
+              </Text>
+            </View>
+          </View>
         </View>
-        <Text style={styles.title}>Upload Invoice</Text>
-        <Text style={styles.subtitle}>
-          Capture or select invoice images for data extraction
-        </Text>
       </View>
 
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
           styles.content,
-          { paddingTop: 180 + insets.top },
+          { paddingTop: 90 + insets.top },
         ]}
       >
         {/* Branch Selection */}
@@ -589,9 +595,8 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: colors.background.light,
-    paddingBottom: spacing.lg,
+    paddingBottom: spacing.md,
     paddingHorizontal: spacing.lg,
-    alignItems: "center",
     ...shadows.sm,
     position: "absolute",
     top: 0,
@@ -599,27 +604,37 @@ const styles = StyleSheet.create({
     right: 0,
     zIndex: 1000,
   },
+  headerTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  greetingSection: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
   headerIcon: {
-    width: 56,
-    height: 56,
+    width: 48,
+    height: 48,
     borderRadius: borderRadius.md,
     backgroundColor: colors.primary.lightGradient[0],
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: spacing.sm,
+    marginRight: spacing.md,
   },
-  title: {
-    fontSize: typography.sizes.xxl,
-    fontWeight: typography.weights.bold,
+  greetingText: {
+    flex: 1,
+  },
+  greeting: {
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.medium,
     color: colors.text.primary,
-    marginBottom: spacing.xs,
-    textAlign: "center",
+    marginBottom: spacing.xs / 2,
   },
-  subtitle: {
-    fontSize: typography.sizes.sm,
+  greetingSubtitle: {
+    fontSize: typography.sizes.xs,
     color: colors.text.secondary,
-    textAlign: "center",
-    paddingHorizontal: spacing.md,
   },
   actionButtons: {
     flexDirection: "row",

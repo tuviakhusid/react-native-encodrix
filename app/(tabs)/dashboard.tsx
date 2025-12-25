@@ -271,8 +271,8 @@ export default function DashboardScreen() {
                 <Ionicons name="arrow-up" size={12} color={colors.text.primary} />
               </View>
             </View>
-            <Text style={styles.statValue}>{totalDocuments}+</Text>
-            <Text style={styles.statSubtext}>Last 24 Hours</Text>
+            <Text style={styles.statValue}>{totalDocuments}</Text>
+            <Text style={styles.statSubtext}>Last Month</Text>
             <View style={styles.statAvatars}>
               <View style={[styles.statAvatar, styles.statAvatar1]} />
               <View style={[styles.statAvatar, styles.statAvatar2]} />
@@ -287,7 +287,7 @@ export default function DashboardScreen() {
                 <Ionicons name="arrow-up" size={12} color={colors.text.primary} />
               </View>
             </View>
-            <Text style={styles.statValue}>{dataExtractionCount}+</Text>
+            <Text style={styles.statValue}>{dataExtractionCount}</Text>
             <Text style={styles.statSubtext}>In Progress</Text>
             <View style={styles.statChart}>
               <Ionicons name="server" size={20} color={colors.background.light} />
@@ -759,11 +759,11 @@ const styles = StyleSheet.create({
   profileMenuOptionTextDanger: {
     color: colors.status.rejected,
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
+  // modalOverlay: {
+  //   flex: 1,
+  //   backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  //   justifyContent: 'flex-end',
+  // },
   profileMenuDivider: {
     height: 1,
     backgroundColor: colors.border.DEFAULT,

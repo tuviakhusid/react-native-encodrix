@@ -26,7 +26,7 @@ export default function TabsLayout() {
           fontWeight: "600",
         },
         tabBarStyle: {
-          backgroundColor: colors.background.light,
+          backgroundColor: "#e6edff", // Light blue background from TopBar lightGradient
           borderTopWidth: 0,
           height: Platform.OS === "ios" ? 70 + insets.bottom : 70,
           paddingBottom:

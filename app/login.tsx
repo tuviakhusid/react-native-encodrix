@@ -89,7 +89,7 @@ export default function LoginScreen() {
                 />
               </View>
             </View>
-            <Text style={styles.greeting}>Hi, Welcome Back</Text>
+            <Text style={styles.greeting}>Welcome Back</Text>
             <Text style={styles.subtitle}>Sign in with your credentials</Text>
           </View>
 
@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
   },
   form: {
     width: "100%",
-    backgroundColor: colors.background.light,
+    backgroundColor: "#e6edff", // Light blue background from TopBar lightGradient
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
     ...shadows.sm,
