@@ -1,6 +1,15 @@
 import { Stack } from "expo-router";
 import { ApolloProvider } from "@apollo/client";
 import { StatusBar } from "expo-status-bar";
+import {
+  useFonts,
+  Manrope_400Regular,
+  Manrope_500Medium,
+  Manrope_600SemiBold,
+  Manrope_700Bold,
+} from "@expo-google-fonts/manrope";
+import * as SplashScreen from "expo-splash-screen";
+import { useEffect } from "react";
 import { apolloClient } from "../src/lib/apollo/apolloClient";
 import { colors } from "../src/constants/theme";
 
@@ -8,7 +17,27 @@ import { colors } from "../src/constants/theme";
 import "react-native-gesture-handler";
 import "react-native-reanimated";
 
+// Keep the splash screen visible while we load fonts
+SplashScreen.preventAutoHideAsync();
+
 export default function RootLayout() {
+  const [fontsLoaded, fontError] = useFonts({
+    "Manrope-Regular": Manrope_400Regular,
+    "Manrope-Medium": Manrope_500Medium,
+    "Manrope-SemiBold": Manrope_600SemiBold,
+    "Manrope-Bold": Manrope_700Bold,
+  });
+
+  useEffect(() => {
+    if (fontsLoaded || fontError) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded, fontError]);
+
+  if (!fontsLoaded && !fontError) {
+    return null;
+  }
+
   return (
     <ApolloProvider client={apolloClient}>
       <StatusBar style="auto" />
@@ -20,6 +49,7 @@ export default function RootLayout() {
           headerTintColor: colors.background.light,
           headerTitleStyle: {
             fontWeight: "600",
+            fontFamily: "Manrope-SemiBold",
           },
         }}
       >

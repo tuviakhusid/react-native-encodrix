@@ -25,9 +25,9 @@ import authService, {
 
 export default function LoginScreen() {
   const router = useRouter();
-  const [identifier, setIdentifier] = useState("m.anasseth012@gmail.com");
-  const [password, setPassword] = useState("google1234");
-  const [organizationCode, setOrganizationCode] = useState("");
+  const [identifier, setIdentifier] = useState("masteruser");
+  const [password, setPassword] = useState("4dV+'\\X4%9=-");
+  const [organizationCode, setOrganizationCode] = useState("enc");
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -209,11 +209,13 @@ const styles = StyleSheet.create({
   greeting: {
     fontSize: typography.sizes.xxl,
     fontWeight: typography.weights.bold,
+    fontFamily: typography.fontFamily.bold,
     color: colors.text.primary,
     marginBottom: spacing.xs,
   },
   subtitle: {
     fontSize: typography.sizes.sm,
+    fontFamily: typography.fontFamily.regular,
     color: colors.text.secondary,
     textAlign: "center",
   },
@@ -230,6 +232,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: typography.sizes.sm,
     fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.medium,
     color: colors.text.primary,
     marginBottom: spacing.xs,
   },
@@ -237,6 +240,7 @@ const styles = StyleSheet.create({
     width: "100%",
     padding: spacing.md,
     fontSize: typography.sizes.md,
+    fontFamily: typography.fontFamily.regular,
     color: colors.text.primary,
     backgroundColor: colors.background.light,
     borderWidth: 1,
@@ -276,11 +280,13 @@ const styles = StyleSheet.create({
   },
   rememberMeText: {
     fontSize: typography.sizes.sm,
+    fontFamily: typography.fontFamily.medium,
     color: colors.text.secondary,
     fontWeight: typography.weights.medium,
   },
   forgotPasswordText: {
     fontSize: typography.sizes.sm,
+    fontFamily: typography.fontFamily.semibold,
     color: colors.primary.DEFAULT,
     fontWeight: typography.weights.semibold,
   },
@@ -300,6 +306,7 @@ const styles = StyleSheet.create({
   buttonText: {
     color: colors.background.light,
     fontSize: typography.sizes.md,
+    fontFamily: typography.fontFamily.semibold,
     fontWeight: typography.weights.semibold,
   },
 });

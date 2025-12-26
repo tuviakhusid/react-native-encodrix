@@ -3,7 +3,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Animated, Dimensions, StyleSheet, Text, View } from "react-native";
-import { colors } from "../src/constants/theme";
+import { colors, typography } from "../src/constants/theme";
 import authService from "../src/lib/services/auth.service";
 
 const { width, height } = Dimensions.get("window");
@@ -286,6 +286,7 @@ const styles = StyleSheet.create({
     textShadowColor: "rgba(0, 0, 0, 0.3)",
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
+    // Note: brandName does NOT use Manrope - uses default system font
   },
   taglineContainer: {
     flexDirection: "row",
@@ -314,6 +315,7 @@ const styles = StyleSheet.create({
     color: colors.background.light,
     fontSize: 15,
     fontWeight: "500",
+    fontFamily: typography.fontFamily.medium,
     letterSpacing: 0.5,
   },
   messageContainer: {
@@ -323,6 +325,7 @@ const styles = StyleSheet.create({
   message: {
     fontSize: 20,
     fontWeight: "700",
+    fontFamily: typography.fontFamily.bold,
     color: colors.background.light,
     textAlign: "center",
     lineHeight: 28,
@@ -334,11 +337,13 @@ const styles = StyleSheet.create({
   highlightText: {
     color: colors.primary.light,
     fontWeight: "600",
+    fontFamily: typography.fontFamily.semibold,
   },
   cursor: {
     color: colors.primary.light,
     fontSize: 20,
     fontWeight: "600",
+    fontFamily: typography.fontFamily.semibold,
   },
   spinnerContainer: {
     marginTop: 32,

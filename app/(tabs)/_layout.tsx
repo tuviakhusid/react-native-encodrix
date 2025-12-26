@@ -39,6 +39,7 @@ export default function TabsLayout() {
         tabBarLabelStyle: {
           fontSize: typography.sizes.xs,
           fontWeight: typography.weights.medium,
+          fontFamily: typography.fontFamily.medium,
         },
         tabBarIconStyle: {
           marginTop: 0,
@@ -136,6 +137,7 @@ const styles = StyleSheet.create({
   tabLabelText: {
     fontSize: typography.sizes.sm,
     fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.semibold,
     color: colors.text.primary,
     letterSpacing: 0.3,
     includeFontPadding: false,

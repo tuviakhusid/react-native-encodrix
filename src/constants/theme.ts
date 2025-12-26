@@ -93,6 +93,12 @@ export const borderRadius = {
 };
 
 export const typography = {
+    fontFamily: {
+        regular: 'Manrope-Regular',
+        medium: 'Manrope-Medium',
+        semibold: 'Manrope-SemiBold',
+        bold: 'Manrope-Bold',
+    },
     sizes: {
         xs: 12,
         sm: 14,

@@ -629,11 +629,13 @@ const styles = StyleSheet.create({
   greeting: {
     fontSize: typography.sizes.md,
     fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.medium,
     color: colors.text.primary,
     marginBottom: spacing.xs / 2,
   },
   greetingSubtitle: {
     fontSize: typography.sizes.xs,
+    fontFamily: typography.fontFamily.regular,
     color: colors.text.secondary,
   },
   actionButtons: {
@@ -660,6 +662,7 @@ const styles = StyleSheet.create({
     color: colors.background.light,
     fontSize: typography.sizes.sm,
     fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.semibold,
     textAlign: "center",
   },
   selectedImagesContainer: {
@@ -668,6 +671,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: typography.sizes.lg,
     fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.semibold,
     color: colors.text.primary,
     marginBottom: spacing.md,
   },
@@ -715,6 +719,7 @@ const styles = StyleSheet.create({
     color: colors.background.light,
     fontSize: typography.sizes.md,
     fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.semibold,
   },
   emptyState: {
     alignItems: "center",
@@ -724,11 +729,13 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: typography.sizes.lg,
     fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.semibold,
     color: colors.text.primary,
     marginTop: spacing.md,
   },
   emptySubtext: {
     fontSize: typography.sizes.sm,
+    fontFamily: typography.fontFamily.regular,
     color: colors.text.secondary,
     marginTop: spacing.xs,
     textAlign: "center",
@@ -743,6 +750,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: spacing.md,
     fontSize: typography.sizes.md,
+    fontFamily: typography.fontFamily.regular,
     color: colors.text.secondary,
   },
   branchSelector: {
@@ -764,11 +772,13 @@ const styles = StyleSheet.create({
   },
   branchSelectorLabel: {
     fontSize: typography.sizes.xs,
+    fontFamily: typography.fontFamily.regular,
     color: colors.text.secondary,
     marginBottom: spacing.xs,
   },
   branchSelectorValue: {
     fontSize: typography.sizes.md,
+    fontFamily: typography.fontFamily.medium,
     color: colors.text.primary,
     fontWeight: typography.weights.medium,
   },
@@ -783,6 +793,7 @@ const styles = StyleSheet.create({
   },
   branchInfoText: {
     fontSize: typography.sizes.sm,
+    fontFamily: typography.fontFamily.regular,
     color: colors.text.secondary,
   },
   modalOverlay: {
@@ -808,6 +819,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: typography.sizes.lg,
     fontWeight: typography.weights.bold,
+    fontFamily: typography.fontFamily.bold,
     color: colors.text.primary,
   },
   modalCloseButton: {
@@ -826,10 +838,12 @@ const styles = StyleSheet.create({
   },
   branchOptionText: {
     fontSize: typography.sizes.md,
+    fontFamily: typography.fontFamily.regular,
     color: colors.text.primary,
   },
   branchOptionTextSelected: {
     fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.semibold,
     color: colors.primary.DEFAULT,
   },
 });

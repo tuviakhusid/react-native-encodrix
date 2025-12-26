@@ -1,23 +1,27 @@
-import { useState, useEffect } from 'react';
+import { gql, useQuery } from "@apollo/client";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  RefreshControl,
-  TouchableOpacity,
   ActivityIndicator,
-  ScrollView,
-  Modal,
   Image,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { useQuery } from '@apollo/client';
-import { gql } from '@apollo/client';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import authService from '../../src/lib/services/auth.service';
-import { colors, spacing, borderRadius, typography, shadows } from '../../src/constants/theme';
+  Modal,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  borderRadius,
+  colors,
+  shadows,
+  spacing,
+  typography,
+} from "../../src/constants/theme";
+import authService from "../../src/lib/services/auth.service";
 
 const GET_CURRENT_USER_DATA = gql`
   query GetCurrentUserData {
@@ -34,8 +38,24 @@ const GET_CURRENT_USER_DATA = gql`
 `;
 
 const GET_PROCESSED_DOCUMENTS = gql`
-  query GetProcessedDocuments($status: StringFilter, $stageStatus: StringFilter, $query: String, $page: Int, $pageSize: Int, $fromDate: String, $toDate: String) {
-    documentsByStatus(status: $status, stageStatus: $stageStatus, q: $query, page: $page, pageSize: $pageSize, fromDate: $fromDate, toDate: $toDate) {
+  query GetProcessedDocuments(
+    $status: StringFilter
+    $stageStatus: StringFilter
+    $query: String
+    $page: Int
+    $pageSize: Int
+    $fromDate: String
+    $toDate: String
+  ) {
+    documentsByStatus(
+      status: $status
+      stageStatus: $stageStatus
+      q: $query
+      page: $page
+      pageSize: $pageSize
+      fromDate: $fromDate
+      toDate: $toDate
+    ) {
       documents {
         id
         documentName
@@ -80,18 +100,18 @@ export default function DashboardScreen() {
       page: 1,
       pageSize: 20,
     },
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: "cache-and-network",
   });
 
   const { data: userData } = useQuery(GET_CURRENT_USER_DATA, {
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: "cache-and-network",
   });
 
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return 'Good morning';
-    if (hour < 18) return 'Good afternoon';
-    return 'Good evening';
+    if (hour < 12) return "Good morning";
+    if (hour < 18) return "Good afternoon";
+    return "Good evening";
   };
 
   const getUserName = () => {
@@ -101,10 +121,10 @@ export default function DashboardScreen() {
         return profile.first_name;
       }
       if (profile.email) {
-        return profile.email.split('@')[0];
+        return profile.email.split("@")[0];
       }
     }
-    return 'User';
+    return "User";
   };
 
   const getUserProfile = () => {
@@ -116,7 +136,7 @@ export default function DashboardScreen() {
   const totalDocuments = data?.documentsByStatus?.totalDocuments || 0;
   const inProgressCount = data?.documentsByStatus?.inProgressCount || 0;
   const completedCount = data?.documentsByStatus?.completedCount || 0;
-  const stageCount = data?.documentsByStatus?.stageCount as any || {};
+  const stageCount = (data?.documentsByStatus?.stageCount as any) || {};
   const dataExtractionCount = stageCount?.data_extraction || 0;
   const reviewCount = stageCount?.review || 0;
 
@@ -128,19 +148,22 @@ export default function DashboardScreen() {
 
   const handleLogout = async () => {
     await authService.logout();
-    router.replace('/login');
+    router.replace("/login");
   };
 
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
-      case 'completed':
+      case "completed":
         return { bg: colors.status.completedBg, text: colors.status.completed };
-      case 'inprogress':
-      case 'in_progress':
-        return { bg: colors.status.inProgressBg, text: colors.status.inProgress };
-      case 'pending':
+      case "inprogress":
+      case "in_progress":
+        return {
+          bg: colors.status.inProgressBg,
+          text: colors.status.inProgress,
+        };
+      case "pending":
         return { bg: colors.status.pendingBg, text: colors.status.pending };
-      case 'rejected':
+      case "rejected":
         return { bg: colors.status.rejectedBg, text: colors.status.rejected };
       default:
         return { bg: colors.border.light, text: colors.text.secondary };
@@ -149,38 +172,46 @@ export default function DashboardScreen() {
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
     });
   };
 
   const renderDocumentItem = ({ item }: { item: Document }) => {
-    const statusColors = getStatusColor(item.workflowStatus || 'pending');
+    const statusColors = getStatusColor(item.workflowStatus || "pending");
 
     return (
       <TouchableOpacity style={styles.documentCard} activeOpacity={0.7}>
         <View style={styles.documentHeader}>
           <View style={styles.documentIconContainer}>
-            <Ionicons name="document-text" size={24} color={colors.primary.DEFAULT} />
+            <Ionicons
+              name="document-text"
+              size={24}
+              color={colors.primary.DEFAULT}
+            />
           </View>
           <View style={styles.documentInfo}>
             <Text style={styles.documentName} numberOfLines={1}>
-              {item.documentName || 'Untitled Invoice'}
+              {item.documentName || "Untitled Invoice"}
             </Text>
-            <Text style={styles.documentType}>{item.documentType || 'Invoice'}</Text>
+            <Text style={styles.documentType}>
+              {item.documentType || "Invoice"}
+            </Text>
           </View>
-          <View style={[styles.statusBadge, { backgroundColor: statusColors.bg }]}>
+          <View
+            style={[styles.statusBadge, { backgroundColor: statusColors.bg }]}
+          >
             <Text style={[styles.statusText, { color: statusColors.text }]}>
-              {item.workflowStatus || 'Pending'}
+              {item.workflowStatus || "Pending"}
             </Text>
           </View>
         </View>
         <View style={styles.documentFooter}>
           <View style={styles.footerItem}>
             <Ionicons name="business" size={16} color={colors.text.secondary} />
-            <Text style={styles.footerText}>{item.businessName || 'N/A'}</Text>
+            <Text style={styles.footerText}>{item.businessName || "N/A"}</Text>
           </View>
           <View style={styles.footerItem}>
             <Ionicons name="calendar" size={16} color={colors.text.secondary} />
@@ -202,7 +233,11 @@ export default function DashboardScreen() {
   if (error) {
     return (
       <View style={styles.centerContainer}>
-        <Ionicons name="alert-circle" size={48} color={colors.status.rejected} />
+        <Ionicons
+          name="alert-circle"
+          size={48}
+          color={colors.status.rejected}
+        />
         <Text style={styles.errorText}>Error loading documents</Text>
         <Text style={styles.errorSubtext}>{error.message}</Text>
         <TouchableOpacity style={styles.retryButton} onPress={() => refetch()}>
@@ -218,42 +253,51 @@ export default function DashboardScreen() {
     <View style={styles.container}>
       {/* Sticky Header with Greeting */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
-          <View style={styles.headerTop}>
-            <View style={styles.greetingSection}>
-              <TouchableOpacity 
-                style={styles.avatarContainer}
-                onPress={() => setShowProfileMenu(true)}
-                activeOpacity={0.7}
-              >
-                {getUserProfile()?.profile_image ? (
-                  <Image 
-                    source={{ uri: getUserProfile().profile_image }} 
-                    style={styles.avatarImage}
-                  />
-                ) : (
-                  <View style={styles.avatarPlaceholder}>
-                    <Text style={styles.avatarText}>
-                      {getUserName().charAt(0).toUpperCase()}
-                    </Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-              <View style={styles.greetingText}>
-                <Text style={styles.greeting}>{getGreeting()} {getUserName()}</Text>
-                <Text style={styles.greetingSubtitle}>Your Daily Invoice Goals</Text>
-              </View>
-            </View>
-            <View style={styles.headerActions}>
-              <TouchableOpacity style={styles.iconButton} activeOpacity={0.7}>
-                <Ionicons name="search-outline" size={20} color={colors.text.primary} />
-              </TouchableOpacity>
+        <View style={styles.headerTop}>
+          <View style={styles.greetingSection}>
+            <TouchableOpacity
+              style={styles.avatarContainer}
+              onPress={() => setShowProfileMenu(true)}
+              activeOpacity={0.7}
+            >
+              {getUserProfile()?.profile_image ? (
+                <Image
+                  source={{ uri: getUserProfile().profile_image }}
+                  style={styles.avatarImage}
+                />
+              ) : (
+                <View style={styles.avatarPlaceholder}>
+                  <Text style={styles.avatarText}>
+                    {getUserName().charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            <View style={styles.greetingText}>
+              <Text style={styles.greeting}>Hi {getUserName()},</Text>
+              <Text style={styles.greetingSubtitle}>
+                Summarized Stats For Your Documents
+              </Text>
             </View>
           </View>
+          <View style={styles.headerActions}>
+            <TouchableOpacity style={styles.iconButton} activeOpacity={0.7}>
+              <Ionicons
+                name="search-outline"
+                size={20}
+                color={colors.text.primary}
+              />
+            </TouchableOpacity>
+          </View>
         </View>
+      </View>
 
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingTop: 90 + insets.top }]}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingTop: 90 + insets.top },
+        ]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -268,7 +312,11 @@ export default function DashboardScreen() {
             <View style={styles.statHeader}>
               <Text style={styles.statTitle}>Total Invoice</Text>
               <View style={styles.statArrowCircle}>
-                <Ionicons name="arrow-up" size={12} color={colors.text.primary} />
+                <Ionicons
+                  name="arrow-up"
+                  size={12}
+                  color={colors.text.primary}
+                />
               </View>
             </View>
             <Text style={styles.statValue}>{totalDocuments}</Text>
@@ -284,13 +332,21 @@ export default function DashboardScreen() {
             <View style={styles.statHeader}>
               <Text style={styles.statTitle}>Data Extraction</Text>
               <View style={styles.statArrowCircle}>
-                <Ionicons name="arrow-up" size={12} color={colors.text.primary} />
+                <Ionicons
+                  name="arrow-up"
+                  size={12}
+                  color={colors.text.primary}
+                />
               </View>
             </View>
             <Text style={styles.statValue}>{dataExtractionCount}</Text>
             <Text style={styles.statSubtext}>In Progress</Text>
             <View style={styles.statChart}>
-              <Ionicons name="server" size={20} color={colors.background.light} />
+              <Ionicons
+                name="server"
+                size={20}
+                color={colors.background.light}
+              />
             </View>
           </View>
         </View>
@@ -299,22 +355,27 @@ export default function DashboardScreen() {
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>My Invoice Record</Text>
           <Text style={styles.sectionSubtitle}>
-            An invoice maker app is a powerful tool designed to simplify billing and payment.
+            An invoice maker app is a powerful tool designed to simplify billing
+            and payment.
           </Text>
         </View>
 
         {documents.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Ionicons name="receipt-outline" size={64} color={colors.text.muted} />
+            <Ionicons
+              name="receipt-outline"
+              size={64}
+              color={colors.text.muted}
+            />
             <Text style={styles.emptyText}>No invoices found</Text>
-            <Text style={styles.emptySubtext}>Upload your first invoice to start data extraction</Text>
+            <Text style={styles.emptySubtext}>
+              Upload your first invoice to start data extraction
+            </Text>
           </View>
         ) : (
           <View style={styles.documentsList}>
             {documents.map((item: Document) => (
-              <View key={item.id}>
-                {renderDocumentItem({ item })}
-              </View>
+              <View key={item.id}>{renderDocumentItem({ item })}</View>
             ))}
           </View>
         )}
@@ -335,8 +396,8 @@ export default function DashboardScreen() {
           <View style={styles.profileMenu}>
             <View style={styles.profileMenuHeader}>
               {getUserProfile()?.profile_image ? (
-                <Image 
-                  source={{ uri: getUserProfile().profile_image }} 
+                <Image
+                  source={{ uri: getUserProfile().profile_image }}
                   style={styles.profileMenuAvatar}
                 />
               ) : (
@@ -349,11 +410,13 @@ export default function DashboardScreen() {
               <View style={styles.profileMenuInfo}>
                 <Text style={styles.profileMenuName}>
                   {getUserProfile()?.first_name && getUserProfile()?.last_name
-                    ? `${getUserProfile().first_name} ${getUserProfile().last_name}`
+                    ? `${getUserProfile().first_name} ${
+                        getUserProfile().last_name
+                      }`
                     : getUserName()}
                 </Text>
                 <Text style={styles.profileMenuEmail}>
-                  {getUserProfile()?.email || ''}
+                  {getUserProfile()?.email || ""}
                 </Text>
               </View>
             </View>
@@ -364,7 +427,11 @@ export default function DashboardScreen() {
                 // Navigate to profile settings if needed
               }}
             >
-              <Ionicons name="person-outline" size={20} color={colors.text.primary} />
+              <Ionicons
+                name="person-outline"
+                size={20}
+                color={colors.text.primary}
+              />
               <Text style={styles.profileMenuOptionText}>Profile</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -374,7 +441,11 @@ export default function DashboardScreen() {
                 // Navigate to settings if needed
               }}
             >
-              <Ionicons name="settings-outline" size={20} color={colors.text.primary} />
+              <Ionicons
+                name="settings-outline"
+                size={20}
+                color={colors.text.primary}
+              />
               <Text style={styles.profileMenuOptionText}>Settings</Text>
             </TouchableOpacity>
             <View style={styles.profileMenuDivider} />
@@ -385,8 +456,17 @@ export default function DashboardScreen() {
                 await handleLogout();
               }}
             >
-              <Ionicons name="log-out-outline" size={20} color={colors.status.rejected} />
-              <Text style={[styles.profileMenuOptionText, styles.profileMenuOptionTextDanger]}>
+              <Ionicons
+                name="log-out-outline"
+                size={20}
+                color={colors.status.rejected}
+              />
+              <Text
+                style={[
+                  styles.profileMenuOptionText,
+                  styles.profileMenuOptionTextDanger,
+                ]}
+              >
                 Logout
               </Text>
             </TouchableOpacity>
@@ -410,8 +490,8 @@ const styles = StyleSheet.create({
   },
   centerContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: spacing.lg,
   },
   header: {
@@ -419,20 +499,20 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.md,
     paddingHorizontal: spacing.lg,
     ...shadows.sm,
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     zIndex: 1000,
   },
   headerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   greetingSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
   },
   avatarContainer: {
@@ -440,7 +520,7 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 24,
     marginRight: spacing.md,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   avatarImage: {
     width: 48,
@@ -452,13 +532,14 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 24,
     backgroundColor: colors.primary.DEFAULT,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   avatarText: {
     color: colors.background.light,
     fontSize: typography.sizes.lg,
     fontWeight: typography.weights.bold,
+    fontFamily: typography.fontFamily.bold,
   },
   greetingText: {
     flex: 1,
@@ -466,15 +547,17 @@ const styles = StyleSheet.create({
   greeting: {
     fontSize: typography.sizes.md,
     fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.medium,
     color: colors.text.primary,
     marginBottom: spacing.xs / 2,
   },
   greetingSubtitle: {
     fontSize: typography.sizes.xs,
+    fontFamily: typography.fontFamily.regular,
     color: colors.text.secondary,
   },
   headerActions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: spacing.sm,
   },
   iconButton: {
@@ -482,37 +565,38 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     backgroundColor: colors.background.gray,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   statsContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
     paddingBottom: spacing.lg,
     gap: spacing.md,
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
   },
   statCard: {
     flex: 1,
     minWidth: 0,
-    maxWidth: '48%',
+    maxWidth: "48%",
     backgroundColor: colors.primary.DEFAULT,
     borderRadius: borderRadius.md,
     padding: spacing.md,
     ...shadows.sm,
-    position: 'relative',
+    position: "relative",
     minHeight: 140,
   },
   statHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
     marginBottom: spacing.sm,
   },
   statTitle: {
     fontSize: typography.sizes.sm,
     fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.medium,
     color: colors.background.light,
     opacity: 0.95,
   },
@@ -521,25 +605,27 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     backgroundColor: colors.background.light,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   statValue: {
     fontSize: typography.sizes.xxxl,
     fontWeight: typography.weights.bold,
+    fontFamily: typography.fontFamily.bold,
     color: colors.background.light,
     marginBottom: spacing.xs,
   },
   statSubtext: {
     fontSize: typography.sizes.xs,
+    fontFamily: typography.fontFamily.regular,
     color: colors.background.light,
     opacity: 0.85,
   },
   statAvatars: {
-    position: 'absolute',
+    position: "absolute",
     bottom: spacing.md,
     right: spacing.md,
-    flexDirection: 'row',
+    flexDirection: "row",
   },
   statAvatar: {
     width: 20,
@@ -560,7 +646,7 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   statChart: {
-    position: 'absolute',
+    position: "absolute",
     bottom: spacing.md,
     right: spacing.md,
   },
@@ -572,11 +658,13 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: typography.sizes.xl,
     fontWeight: typography.weights.bold,
+    fontFamily: typography.fontFamily.bold,
     color: colors.text.primary,
     marginBottom: spacing.xs,
   },
   sectionSubtitle: {
     fontSize: typography.sizes.sm,
+    fontFamily: typography.fontFamily.regular,
     color: colors.text.secondary,
     lineHeight: 20,
   },
@@ -594,9 +682,9 @@ const styles = StyleSheet.create({
     borderColor: colors.border.light,
   },
   documentHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
     marginBottom: spacing.md,
   },
   documentIconContainer: {
@@ -604,8 +692,8 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 8,
     backgroundColor: colors.primary.lightGradient[0],
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: spacing.sm,
   },
   documentInfo: {
@@ -615,11 +703,13 @@ const styles = StyleSheet.create({
   documentName: {
     fontSize: typography.sizes.md,
     fontWeight: typography.weights.bold,
+    fontFamily: typography.fontFamily.bold,
     color: colors.text.primary,
     marginBottom: spacing.xs / 2,
   },
   documentType: {
     fontSize: typography.sizes.sm,
+    fontFamily: typography.fontFamily.regular,
     color: colors.text.secondary,
   },
   statusBadge: {
@@ -630,52 +720,58 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: typography.sizes.xs,
     fontWeight: typography.weights.medium,
-    textTransform: 'capitalize',
+    fontFamily: typography.fontFamily.medium,
+    textTransform: "capitalize",
   },
   documentFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginTop: spacing.sm,
     paddingTop: spacing.sm,
     borderTopWidth: 1,
     borderTopColor: colors.border.light,
   },
   footerItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.xs,
   },
   footerText: {
     fontSize: typography.sizes.xs,
+    fontFamily: typography.fontFamily.regular,
     color: colors.text.secondary,
   },
   emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: spacing.xxl,
   },
   emptyText: {
     fontSize: typography.sizes.lg,
     fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.semibold,
     color: colors.text.primary,
     marginTop: spacing.md,
   },
   emptySubtext: {
     fontSize: typography.sizes.sm,
+    fontFamily: typography.fontFamily.regular,
     color: colors.text.secondary,
     marginTop: spacing.xs,
   },
   errorText: {
     fontSize: typography.sizes.lg,
     fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.semibold,
     color: colors.text.primary,
     marginTop: spacing.md,
   },
   errorSubtext: {
     fontSize: typography.sizes.sm,
+    fontFamily: typography.fontFamily.regular,
     color: colors.text.secondary,
     marginTop: spacing.xs,
-    textAlign: 'center',
+    textAlign: "center",
   },
   retryButton: {
     backgroundColor: colors.primary.DEFAULT,
@@ -689,11 +785,12 @@ const styles = StyleSheet.create({
     color: colors.background.light,
     fontSize: typography.sizes.md,
     fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.semibold,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
   },
   profileMenu: {
     backgroundColor: colors.background.light,
@@ -703,8 +800,8 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl,
   },
   profileMenuHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: spacing.lg,
     paddingBottom: spacing.lg,
     borderBottomWidth: 1,
@@ -721,14 +818,15 @@ const styles = StyleSheet.create({
     height: 56,
     borderRadius: 28,
     backgroundColor: colors.primary.DEFAULT,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: spacing.md,
   },
   profileMenuAvatarText: {
     color: colors.background.light,
     fontSize: typography.sizes.xl,
     fontWeight: typography.weights.bold,
+    fontFamily: typography.fontFamily.bold,
   },
   profileMenuInfo: {
     flex: 1,
@@ -736,16 +834,18 @@ const styles = StyleSheet.create({
   profileMenuName: {
     fontSize: typography.sizes.lg,
     fontWeight: typography.weights.bold,
+    fontFamily: typography.fontFamily.bold,
     color: colors.text.primary,
     marginBottom: spacing.xs,
   },
   profileMenuEmail: {
     fontSize: typography.sizes.sm,
+    fontFamily: typography.fontFamily.regular,
     color: colors.text.secondary,
   },
   profileMenuOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: spacing.md,
     gap: spacing.md,
   },
@@ -754,6 +854,7 @@ const styles = StyleSheet.create({
   },
   profileMenuOptionText: {
     fontSize: typography.sizes.md,
+    fontFamily: typography.fontFamily.regular,
     color: colors.text.primary,
   },
   profileMenuOptionTextDanger: {
@@ -770,4 +871,3 @@ const styles = StyleSheet.create({
     marginVertical: spacing.sm,
   },
 });
-
