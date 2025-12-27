@@ -1,5 +1,5 @@
 // Theme colors EXACTLY from encodrix brand identity - TopBar logo-bar gradient
-export const colors = {
+export const lightColors = {
     primary: {
         DEFAULT: '#1e3a8a', // Primary button color - from TopBar logo-bar gradient end (#2c5282)
         light: '#3b82f6', // Light blue for accents
@@ -74,6 +74,89 @@ export const colors = {
         light: ['#f0f5ff', '#e6edff'],
     },
 };
+
+export const darkColors = {
+    primary: {
+        DEFAULT: '#3b82f6', // Lighter blue for dark mode
+        light: '#60a5fa',
+        dark: '#2563eb',
+        bg: '#1e3a8a',
+        text: '#93c5fd',
+        brand: '#3b82f6',
+        brandGradient: ['#1e3a8a', '#3b82f6'],
+        lightGradient: ['#1e293b', '#334155'],
+        splashGradient: ['#0f172a', '#1e3a8a', '#312e81'],
+    },
+    secondary: {
+        DEFAULT: '#60a5fa',
+        light: '#93c5fd',
+        dark: '#3b82f6',
+    },
+    background: {
+        DEFAULT: '#0f172a',
+        light: '#1e293b',
+        card: '#1e293b',
+        gray: '#334155',
+    },
+    stats: {
+        blue: {
+            bg: '#1e3a8a',
+            text: '#93c5fd',
+        },
+        yellow: {
+            bg: '#78350f',
+            text: '#fbbf24',
+        },
+        green: {
+            bg: '#14532d',
+            text: '#86efac',
+        },
+        orange: {
+            bg: '#7c2d12',
+            text: '#fdba74',
+        },
+        purple: {
+            bg: '#581c87',
+            text: '#c084fc',
+        },
+        red: {
+            bg: '#7f1d1d',
+            text: '#fca5a5',
+        },
+    },
+    text: {
+        primary: '#f1f5f9',
+        secondary: '#cbd5e1',
+        muted: '#94a3b8',
+    },
+    status: {
+        active: '#86efac',
+        activeBg: '#14532d',
+        pending: '#fbbf24',
+        pendingBg: '#78350f',
+        inProgress: '#fde047',
+        inProgressBg: '#713f12',
+        completed: '#5eead4',
+        completedBg: '#134e4a',
+        rejected: '#f87171',
+        rejectedBg: '#7f1d1d',
+    },
+    border: {
+        DEFAULT: '#334155',
+        light: '#475569',
+    },
+    gradient: {
+        primary: ['#1e3a8a', '#3b82f6'],
+        light: ['#1e293b', '#334155'],
+    },
+};
+
+export const getColors = (theme: 'light' | 'dark') => {
+    return theme === 'dark' ? darkColors : lightColors;
+};
+
+// Default export for backward compatibility
+export const colors = lightColors;
 
 export const spacing = {
     xs: 4,

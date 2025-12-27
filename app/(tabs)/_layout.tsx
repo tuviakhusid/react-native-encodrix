@@ -4,20 +4,24 @@ import { Platform, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   borderRadius,
-  colors,
+  getColors,
   shadows,
   spacing,
   typography,
 } from "../../src/constants/theme";
+import { useTheme } from "../../src/context/theme-context";
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
+  const { theme } = useTheme();
+  const colors = getColors(theme);
+  const styles = getStyles(colors);
 
   return (
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: colors.primary.DEFAULT,
-        tabBarInactiveTintColor: colors.text.muted,
+        tabBarInactiveTintColor: colors.text.secondary,
         headerStyle: {
           backgroundColor: colors.primary.brandGradient[0], // Match TopBar logo-bar gradient start
         },
@@ -26,7 +30,8 @@ export default function TabsLayout() {
           fontWeight: "600",
         },
         tabBarStyle: {
-          backgroundColor: "#e6edff", // Light blue background from TopBar lightGradient
+          backgroundColor:
+            theme === "dark" ? colors.background.light : "#e6edff", // Light blue background from TopBar lightGradient
           borderTopWidth: 0,
           height: Platform.OS === "ios" ? 70 + insets.bottom : 70,
           paddingBottom:
@@ -67,9 +72,6 @@ export default function TabsLayout() {
                       color={colors.background.light}
                     />
                   </View>
-                  {/* <View style={styles.tabLabelPill}>
-                    <Text style={styles.tabLabelText}>Home</Text>
-                  </View> */}
                 </View>
               );
             }
@@ -78,7 +80,7 @@ export default function TabsLayout() {
                 <Ionicons
                   name="home-outline"
                   size={24}
-                  color={colors.text.muted}
+                  color={colors.text.secondary}
                 />
               </View>
             );
@@ -91,55 +93,85 @@ export default function TabsLayout() {
         options={{
           title: "Upload",
           headerShown: false,
-          tabBarIcon: ({ focused }) => (
-            <View style={styles.tabIconContainer}>
-              <Ionicons
-                name={focused ? "camera" : "camera-outline"}
-                size={24}
-                color={focused ? colors.primary.DEFAULT : colors.text.muted}
-              />
-            </View>
-          ),
+          tabBarIcon: ({ focused }) => {
+            if (focused) {
+              return (
+                <View style={styles.tabIconWrapper}>
+                  <View
+                    style={[
+                      styles.tabIconContainer,
+                      styles.tabIconContainerActive,
+                    ]}
+                  >
+                    <Ionicons
+                      name="camera"
+                      size={20}
+                      color={colors.background.light}
+                    />
+                  </View>
+                </View>
+              );
+            }
+            return (
+              <View style={styles.tabIconContainer}>
+                <Ionicons
+                  name="camera-outline"
+                  size={24}
+                  color={colors.text.secondary}
+                />
+              </View>
+            );
+          },
           tabBarLabel: "",
+        }}
+      />
+      <Tabs.Screen
+        name="invoice-detail"
+        options={{
+          href: null, // Hide from tab bar
+          headerShown: false,
         }}
       />
     </Tabs>
   );
 }
 
-const styles = StyleSheet.create({
-  tabIconWrapper: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    justifyContent: "center",
-    flexShrink: 0,
-  },
-  tabIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
-    flexShrink: 0,
-  },
-  tabIconContainerActive: {
-    backgroundColor: colors.primary.DEFAULT,
-  },
-  tabLabelPill: {
-    backgroundColor: colors.background.gray,
-    paddingHorizontal: spacing.md + 4,
-    paddingVertical: spacing.xs + 2,
-    borderRadius: borderRadius.full,
-    minWidth: 80,
-    flexShrink: 0,
-  },
-  tabLabelText: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold,
-    fontFamily: typography.fontFamily.semibold,
-    color: colors.text.primary,
-    letterSpacing: 0.3,
-    includeFontPadding: false,
-  },
-});
+const getStyles = (colors: ReturnType<typeof getColors>) =>
+  StyleSheet.create({
+    tabIconWrapper: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.md,
+      justifyContent: "center",
+      flexShrink: 0,
+    },
+    tabIconContainer: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      justifyContent: "center",
+      alignItems: "center",
+      flexShrink: 0,
+    },
+    tabIconContainerActive: {
+      backgroundColor: colors.primary.DEFAULT,
+    },
+    tabLabelPill: {
+      backgroundColor: colors.background.gray,
+      paddingHorizontal: spacing.md + 4,
+      paddingVertical: spacing.xs + 2,
+      borderRadius: borderRadius.full,
+      minWidth: 80,
+      flexShrink: 0,
+    },
+    tabLabelText: {
+      fontSize: typography.sizes.sm,
+      fontWeight: typography.weights.semibold,
+      fontFamily: typography.fontFamily.semibold,
+      color: colors.text.primary,
+      letterSpacing: 0.3,
+      includeFontPadding: false,
+    },
+  });
+
+const styles = getStyles(getColors("light")); // Default

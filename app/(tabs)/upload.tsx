@@ -20,11 +20,12 @@ import * as SecureStore from "expo-secure-store";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   borderRadius,
-  colors,
+  getColors,
   shadows,
   spacing,
   typography,
 } from "../../src/constants/theme";
+import { useTheme } from "../../src/context/theme-context";
 
 const UPLOAD_MULTIPLE = gql`
   mutation UploadMultiple($files: [Upload!]!, $branchId: String!) {
@@ -84,6 +85,9 @@ interface Branch {
 
 export default function UploadScreen() {
   const insets = useSafeAreaInsets();
+  const { theme } = useTheme();
+  const colors = getColors(theme);
+  const styles = getStyles(colors);
   const [selectedImages, setSelectedImages] = useState<SelectedImage[]>([]);
   const [uploading, setUploading] = useState(false);
   const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
@@ -581,269 +585,272 @@ export default function UploadScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background.DEFAULT,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  content: {
-    padding: spacing.lg,
-    paddingBottom: 100, // Extra padding for bottom navigation
-  },
-  header: {
-    backgroundColor: colors.background.light,
-    paddingBottom: spacing.md,
-    paddingHorizontal: spacing.lg,
-    ...shadows.sm,
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 1000,
-  },
-  headerTop: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  greetingSection: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
-  headerIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.primary.lightGradient[0],
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: spacing.md,
-  },
-  greetingText: {
-    flex: 1,
-  },
-  greeting: {
-    fontSize: typography.sizes.md,
-    fontWeight: typography.weights.medium,
-    fontFamily: typography.fontFamily.medium,
-    color: colors.text.primary,
-    marginBottom: spacing.xs / 2,
-  },
-  greetingSubtitle: {
-    fontSize: typography.sizes.xs,
-    fontFamily: typography.fontFamily.regular,
-    color: colors.text.secondary,
-  },
-  actionButtons: {
-    flexDirection: "row",
-    gap: spacing.md,
-    marginBottom: spacing.lg,
-  },
-  actionButton: {
-    flex: 1,
-    maxWidth: "48%",
-    backgroundColor: colors.primary.DEFAULT,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.xs,
-    ...shadows.sm,
-    minHeight: 90,
-  },
-  actionButtonDisabled: {
-    opacity: 0.6,
-  },
-  actionButtonText: {
-    color: colors.background.light,
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold,
-    fontFamily: typography.fontFamily.semibold,
-    textAlign: "center",
-  },
-  selectedImagesContainer: {
-    marginBottom: spacing.lg,
-  },
-  sectionTitle: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.semibold,
-    fontFamily: typography.fontFamily.semibold,
-    color: colors.text.primary,
-    marginBottom: spacing.md,
-  },
-  imagesGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.md,
-  },
-  imageContainer: {
-    width: "47%",
-    position: "relative",
-    marginBottom: spacing.sm,
-  },
-  image: {
-    width: "100%",
-    height: 150,
-    borderRadius: borderRadius.md,
-    resizeMode: "cover",
-    ...shadows.sm,
-  },
-  removeButton: {
-    position: "absolute",
-    top: -8,
-    right: -8,
-    backgroundColor: colors.background.light,
-    borderRadius: borderRadius.full,
-    ...shadows.sm,
-  },
-  uploadButton: {
-    backgroundColor: colors.primary.DEFAULT,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    borderRadius: borderRadius.md,
-    gap: spacing.sm,
-    ...shadows.sm,
-    marginTop: spacing.md,
-  },
-  uploadButtonDisabled: {
-    opacity: 0.6,
-  },
-  uploadButtonText: {
-    color: colors.background.light,
-    fontSize: typography.sizes.md,
-    fontWeight: typography.weights.semibold,
-    fontFamily: typography.fontFamily.semibold,
-  },
-  emptyState: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: spacing.xxl,
-  },
-  emptyText: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.semibold,
-    fontFamily: typography.fontFamily.semibold,
-    color: colors.text.primary,
-    marginTop: spacing.md,
-  },
-  emptySubtext: {
-    fontSize: typography.sizes.sm,
-    fontFamily: typography.fontFamily.regular,
-    color: colors.text.secondary,
-    marginTop: spacing.xs,
-    textAlign: "center",
-    paddingHorizontal: spacing.lg,
-  },
-  centerContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: colors.background.DEFAULT,
-  },
-  loadingText: {
-    marginTop: spacing.md,
-    fontSize: typography.sizes.md,
-    fontFamily: typography.fontFamily.regular,
-    color: colors.text.secondary,
-  },
-  branchSelector: {
-    backgroundColor: colors.background.light,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    marginBottom: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border.DEFAULT,
-    ...shadows.sm,
-  },
-  branchSelectorContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-  },
-  branchSelectorText: {
-    flex: 1,
-  },
-  branchSelectorLabel: {
-    fontSize: typography.sizes.xs,
-    fontFamily: typography.fontFamily.regular,
-    color: colors.text.secondary,
-    marginBottom: spacing.xs,
-  },
-  branchSelectorValue: {
-    fontSize: typography.sizes.md,
-    fontFamily: typography.fontFamily.medium,
-    color: colors.text.primary,
-    fontWeight: typography.weights.medium,
-  },
-  branchInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-    backgroundColor: colors.background.light,
-    padding: spacing.sm,
-    borderRadius: borderRadius.sm,
-    marginBottom: spacing.lg,
-  },
-  branchInfoText: {
-    fontSize: typography.sizes.sm,
-    fontFamily: typography.fontFamily.regular,
-    color: colors.text.secondary,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "flex-end",
-  },
-  modalContent: {
-    backgroundColor: colors.background.light,
-    borderTopLeftRadius: borderRadius.lg,
-    borderTopRightRadius: borderRadius.lg,
-    maxHeight: "70%",
-    paddingBottom: spacing.xl,
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.DEFAULT,
-  },
-  modalTitle: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.bold,
-    fontFamily: typography.fontFamily.bold,
-    color: colors.text.primary,
-  },
-  modalCloseButton: {
-    padding: spacing.xs,
-  },
-  branchOption: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.light,
-  },
-  branchOptionSelected: {
-    backgroundColor: colors.primary.light + "20",
-  },
-  branchOptionText: {
-    fontSize: typography.sizes.md,
-    fontFamily: typography.fontFamily.regular,
-    color: colors.text.primary,
-  },
-  branchOptionTextSelected: {
-    fontWeight: typography.weights.semibold,
-    fontFamily: typography.fontFamily.semibold,
-    color: colors.primary.DEFAULT,
-  },
-});
+const getStyles = (colors: ReturnType<typeof getColors>) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background.DEFAULT,
+    },
+    scrollView: {
+      flex: 1,
+    },
+    content: {
+      padding: spacing.lg,
+      paddingBottom: 100, // Extra padding for bottom navigation
+    },
+    header: {
+      backgroundColor: colors.background.light,
+      paddingBottom: spacing.md,
+      paddingHorizontal: spacing.lg,
+      ...shadows.sm,
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 1000,
+    },
+    headerTop: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    greetingSection: {
+      flexDirection: "row",
+      alignItems: "center",
+      flex: 1,
+    },
+    headerIcon: {
+      width: 48,
+      height: 48,
+      borderRadius: borderRadius.md,
+      backgroundColor: colors.primary.lightGradient[0],
+      justifyContent: "center",
+      alignItems: "center",
+      marginRight: spacing.md,
+    },
+    greetingText: {
+      flex: 1,
+    },
+    greeting: {
+      fontSize: typography.sizes.md,
+      fontWeight: typography.weights.medium,
+      fontFamily: typography.fontFamily.medium,
+      color: colors.text.primary,
+      marginBottom: spacing.xs / 2,
+    },
+    greetingSubtitle: {
+      fontSize: typography.sizes.xs,
+      fontFamily: typography.fontFamily.regular,
+      color: colors.text.secondary,
+    },
+    actionButtons: {
+      flexDirection: "row",
+      gap: spacing.md,
+      marginBottom: spacing.lg,
+    },
+    actionButton: {
+      flex: 1,
+      maxWidth: "48%",
+      backgroundColor: colors.primary.DEFAULT,
+      borderRadius: borderRadius.md,
+      padding: spacing.md,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: spacing.xs,
+      ...shadows.sm,
+      minHeight: 90,
+    },
+    actionButtonDisabled: {
+      opacity: 0.6,
+    },
+    actionButtonText: {
+      color: colors.background.light,
+      fontSize: typography.sizes.sm,
+      fontWeight: typography.weights.semibold,
+      fontFamily: typography.fontFamily.semibold,
+      textAlign: "center",
+    },
+    selectedImagesContainer: {
+      marginBottom: spacing.lg,
+    },
+    sectionTitle: {
+      fontSize: typography.sizes.lg,
+      fontWeight: typography.weights.semibold,
+      fontFamily: typography.fontFamily.semibold,
+      color: colors.text.primary,
+      marginBottom: spacing.md,
+    },
+    imagesGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: spacing.md,
+    },
+    imageContainer: {
+      width: "47%",
+      position: "relative",
+      marginBottom: spacing.sm,
+    },
+    image: {
+      width: "100%",
+      height: 150,
+      borderRadius: borderRadius.md,
+      resizeMode: "cover",
+      ...shadows.sm,
+    },
+    removeButton: {
+      position: "absolute",
+      top: -8,
+      right: -8,
+      backgroundColor: colors.background.light,
+      borderRadius: borderRadius.full,
+      ...shadows.sm,
+    },
+    uploadButton: {
+      backgroundColor: colors.primary.DEFAULT,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: spacing.md,
+      paddingHorizontal: spacing.lg,
+      borderRadius: borderRadius.md,
+      gap: spacing.sm,
+      ...shadows.sm,
+      marginTop: spacing.md,
+    },
+    uploadButtonDisabled: {
+      opacity: 0.6,
+    },
+    uploadButtonText: {
+      color: colors.background.light,
+      fontSize: typography.sizes.md,
+      fontWeight: typography.weights.semibold,
+      fontFamily: typography.fontFamily.semibold,
+    },
+    emptyState: {
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: spacing.xxl,
+    },
+    emptyText: {
+      fontSize: typography.sizes.lg,
+      fontWeight: typography.weights.semibold,
+      fontFamily: typography.fontFamily.semibold,
+      color: colors.text.primary,
+      marginTop: spacing.md,
+    },
+    emptySubtext: {
+      fontSize: typography.sizes.sm,
+      fontFamily: typography.fontFamily.regular,
+      color: colors.text.secondary,
+      marginTop: spacing.xs,
+      textAlign: "center",
+      paddingHorizontal: spacing.lg,
+    },
+    centerContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: colors.background.DEFAULT,
+    },
+    loadingText: {
+      marginTop: spacing.md,
+      fontSize: typography.sizes.md,
+      fontFamily: typography.fontFamily.regular,
+      color: colors.text.secondary,
+    },
+    branchSelector: {
+      backgroundColor: colors.background.light,
+      borderRadius: borderRadius.md,
+      padding: spacing.md,
+      marginBottom: spacing.lg,
+      borderWidth: 1,
+      borderColor: colors.border.DEFAULT,
+      ...shadows.sm,
+    },
+    branchSelectorContent: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.sm,
+    },
+    branchSelectorText: {
+      flex: 1,
+    },
+    branchSelectorLabel: {
+      fontSize: typography.sizes.xs,
+      fontFamily: typography.fontFamily.regular,
+      color: colors.text.secondary,
+      marginBottom: spacing.xs,
+    },
+    branchSelectorValue: {
+      fontSize: typography.sizes.md,
+      fontFamily: typography.fontFamily.medium,
+      color: colors.text.primary,
+      fontWeight: typography.weights.medium,
+    },
+    branchInfo: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.xs,
+      backgroundColor: colors.background.light,
+      padding: spacing.sm,
+      borderRadius: borderRadius.sm,
+      marginBottom: spacing.lg,
+    },
+    branchInfoText: {
+      fontSize: typography.sizes.sm,
+      fontFamily: typography.fontFamily.regular,
+      color: colors.text.secondary,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0, 0, 0, 0.5)",
+      justifyContent: "flex-end",
+    },
+    modalContent: {
+      backgroundColor: colors.background.light,
+      borderTopLeftRadius: borderRadius.lg,
+      borderTopRightRadius: borderRadius.lg,
+      maxHeight: "70%",
+      paddingBottom: spacing.xl,
+    },
+    modalHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      padding: spacing.lg,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border.DEFAULT,
+    },
+    modalTitle: {
+      fontSize: typography.sizes.lg,
+      fontWeight: typography.weights.bold,
+      fontFamily: typography.fontFamily.bold,
+      color: colors.text.primary,
+    },
+    modalCloseButton: {
+      padding: spacing.xs,
+    },
+    branchOption: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      padding: spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border.light,
+    },
+    branchOptionSelected: {
+      backgroundColor: colors.primary.light + "20",
+    },
+    branchOptionText: {
+      fontSize: typography.sizes.md,
+      fontFamily: typography.fontFamily.regular,
+      color: colors.text.primary,
+    },
+    branchOptionTextSelected: {
+      fontWeight: typography.weights.semibold,
+      fontFamily: typography.fontFamily.semibold,
+      color: colors.primary.DEFAULT,
+    },
+  });
+
+const styles = getStyles(getColors("light")); // Default, will be overridden

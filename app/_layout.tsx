@@ -1,17 +1,18 @@
-import { Stack } from "expo-router";
 import { ApolloProvider } from "@apollo/client";
-import { StatusBar } from "expo-status-bar";
 import {
-  useFonts,
   Manrope_400Regular,
   Manrope_500Medium,
   Manrope_600SemiBold,
   Manrope_700Bold,
+  useFonts,
 } from "@expo-google-fonts/manrope";
+import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
+import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
+import { getColors } from "../src/constants/theme";
+import { ThemeProvider, useTheme } from "../src/context/theme-context";
 import { apolloClient } from "../src/lib/apollo/apolloClient";
-import { colors } from "../src/constants/theme";
 
 // Import gesture handler at the top level (required for React Native)
 import "react-native-gesture-handler";
@@ -39,8 +40,19 @@ export default function RootLayout() {
   }
 
   return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
+  );
+}
+
+function AppContent() {
+  const { theme } = useTheme();
+  const colors = getColors(theme);
+
+  return (
     <ApolloProvider client={apolloClient}>
-      <StatusBar style="auto" />
+      <StatusBar style={theme === "dark" ? "light" : "dark"} />
       <Stack
         screenOptions={{
           headerStyle: {

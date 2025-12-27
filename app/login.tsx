@@ -14,17 +14,21 @@ import {
 } from "react-native";
 import {
   borderRadius,
-  colors,
+  getColors,
   shadows,
   spacing,
   typography,
 } from "../src/constants/theme";
+import { useTheme } from "../src/context/theme-context";
 import authService, {
   LoginCredentials,
 } from "../src/lib/services/auth.service";
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { theme } = useTheme();
+  const colors = getColors(theme);
+  const styles = getStyles(colors);
   const [identifier, setIdentifier] = useState("masteruser");
   const [password, setPassword] = useState("4dV+'\\X4%9=-");
   const [organizationCode, setOrganizationCode] = useState("enc");
@@ -157,7 +161,7 @@ export default function LoginScreen() {
                 <Text style={styles.rememberMeText}>Remember me</Text>
               </TouchableOpacity>
               <TouchableOpacity>
-                <Text style={styles.forgotPasswordText}>Forgot Pass</Text>
+                <Text style={styles.forgotPasswordText}></Text>
               </TouchableOpacity>
             </View>
 
@@ -178,135 +182,136 @@ export default function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background.DEFAULT,
-  },
-  scrollContent: {
-    flexGrow: 1,
-  },
-  content: {
-    flex: 1,
-    justifyContent: "center",
-    padding: spacing.lg,
-  },
-  header: {
-    marginBottom: spacing.xl,
-    alignItems: "center",
-  },
-  logoContainer: {
-    marginBottom: spacing.md,
-  },
-  logoIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 12,
-    backgroundColor: colors.primary.lightGradient[0],
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  greeting: {
-    fontSize: typography.sizes.xxl,
-    fontWeight: typography.weights.bold,
-    fontFamily: typography.fontFamily.bold,
-    color: colors.text.primary,
-    marginBottom: spacing.xs,
-  },
-  subtitle: {
-    fontSize: typography.sizes.sm,
-    fontFamily: typography.fontFamily.regular,
-    color: colors.text.secondary,
-    textAlign: "center",
-  },
-  form: {
-    width: "100%",
-    backgroundColor: "#e6edff", // Light blue background from TopBar lightGradient
-    borderRadius: borderRadius.lg,
-    padding: spacing.lg,
-    ...shadows.sm,
-  },
-  inputContainer: {
-    marginBottom: spacing.md,
-  },
-  label: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.medium,
-    fontFamily: typography.fontFamily.medium,
-    color: colors.text.primary,
-    marginBottom: spacing.xs,
-  },
-  input: {
-    width: "100%",
-    padding: spacing.md,
-    fontSize: typography.sizes.md,
-    fontFamily: typography.fontFamily.regular,
-    color: colors.text.primary,
-    backgroundColor: colors.background.light,
-    borderWidth: 1,
-    borderColor: colors.border.DEFAULT,
-    borderRadius: borderRadius.md,
-  },
-  optionsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: spacing.lg,
-    marginTop: spacing.xs,
-  },
-  rememberMeContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderWidth: 2,
-    borderColor: colors.border.DEFAULT,
-    borderRadius: 6,
-    marginRight: spacing.sm,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: colors.background.light,
-  },
-  checkboxChecked: {
-    backgroundColor: colors.primary.DEFAULT,
-    borderColor: colors.primary.DEFAULT,
-  },
-  checkmark: {
-    color: colors.background.light,
-    fontSize: 12,
-    fontWeight: "bold",
-  },
-  rememberMeText: {
-    fontSize: typography.sizes.sm,
-    fontFamily: typography.fontFamily.medium,
-    color: colors.text.secondary,
-    fontWeight: typography.weights.medium,
-  },
-  forgotPasswordText: {
-    fontSize: typography.sizes.sm,
-    fontFamily: typography.fontFamily.semibold,
-    color: colors.primary.DEFAULT,
-    fontWeight: typography.weights.semibold,
-  },
-  button: {
-    backgroundColor: colors.primary.DEFAULT,
-    borderRadius: borderRadius.md,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: spacing.md,
-    ...shadows.sm,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: colors.background.light,
-    fontSize: typography.sizes.md,
-    fontFamily: typography.fontFamily.semibold,
-    fontWeight: typography.weights.semibold,
-  },
-});
+const getStyles = (colors: ReturnType<typeof getColors>) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background.DEFAULT,
+    },
+    scrollContent: {
+      flexGrow: 1,
+    },
+    content: {
+      flex: 1,
+      justifyContent: "center",
+      padding: spacing.lg,
+    },
+    header: {
+      marginBottom: spacing.xl,
+      alignItems: "center",
+    },
+    logoContainer: {
+      marginBottom: spacing.md,
+    },
+    logoIcon: {
+      width: 56,
+      height: 56,
+      borderRadius: 12,
+      backgroundColor: colors.primary.lightGradient[0],
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    greeting: {
+      fontSize: typography.sizes.xxl,
+      fontWeight: typography.weights.bold,
+      fontFamily: typography.fontFamily.bold,
+      color: colors.text.primary,
+      marginBottom: spacing.xs,
+    },
+    subtitle: {
+      fontSize: typography.sizes.sm,
+      fontFamily: typography.fontFamily.regular,
+      color: colors.text.secondary,
+      textAlign: "center",
+    },
+    form: {
+      width: "100%",
+      backgroundColor: colors.background.light,
+      borderRadius: borderRadius.lg,
+      padding: spacing.lg,
+      ...shadows.sm,
+    },
+    inputContainer: {
+      marginBottom: spacing.md,
+    },
+    label: {
+      fontSize: typography.sizes.sm,
+      fontWeight: typography.weights.medium,
+      fontFamily: typography.fontFamily.medium,
+      color: colors.text.primary,
+      marginBottom: spacing.xs,
+    },
+    input: {
+      width: "100%",
+      padding: spacing.md,
+      fontSize: typography.sizes.md,
+      fontFamily: typography.fontFamily.regular,
+      color: colors.text.primary,
+      backgroundColor: colors.background.light,
+      borderWidth: 1,
+      borderColor: colors.border.DEFAULT,
+      borderRadius: borderRadius.md,
+    },
+    optionsRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: spacing.lg,
+      marginTop: spacing.xs,
+    },
+    rememberMeContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    checkbox: {
+      width: 22,
+      height: 22,
+      borderWidth: 2,
+      borderColor: colors.border.DEFAULT,
+      borderRadius: 6,
+      marginRight: spacing.sm,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: colors.background.light,
+    },
+    checkboxChecked: {
+      backgroundColor: colors.primary.DEFAULT,
+      borderColor: colors.primary.DEFAULT,
+    },
+    checkmark: {
+      color: colors.background.light,
+      fontSize: 12,
+      fontWeight: "bold",
+    },
+    rememberMeText: {
+      fontSize: typography.sizes.sm,
+      fontFamily: typography.fontFamily.medium,
+      color: colors.text.secondary,
+      fontWeight: typography.weights.medium,
+    },
+    forgotPasswordText: {
+      fontSize: typography.sizes.sm,
+      fontFamily: typography.fontFamily.semibold,
+      color: colors.primary.DEFAULT,
+      fontWeight: typography.weights.semibold,
+    },
+    button: {
+      backgroundColor: colors.primary.DEFAULT,
+      borderRadius: borderRadius.md,
+      paddingVertical: spacing.md,
+      paddingHorizontal: spacing.lg,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: spacing.md,
+      ...shadows.sm,
+    },
+    buttonDisabled: {
+      opacity: 0.6,
+    },
+    buttonText: {
+      color: colors.background.light,
+      fontSize: typography.sizes.md,
+      fontFamily: typography.fontFamily.semibold,
+      fontWeight: typography.weights.semibold,
+    },
+  });
