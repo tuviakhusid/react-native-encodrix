@@ -20,6 +20,8 @@ import {
   typography,
 } from "../../src/constants/theme";
 import { useTheme } from "../../src/context/theme-context";
+import invoiceService from "../../src/lib/services/invoice.service";
+import { Alert } from "react-native";
 
 const GET_EXTRACTED_DATA = gql`
   query GetExtractedData($invoiceId: String!) {
@@ -125,19 +127,18 @@ export default function InvoiceDetailScreen() {
   };
 
   const handleOpenFile = async (url: string) => {
-    if (!url) return;
+    if (!url) {
+      Alert.alert("Error", "File URL is not available");
+      return;
+    }
 
     try {
-      const canOpen = await Linking.canOpenURL(url);
-      if (canOpen) {
-        await Linking.openURL(url);
-      } else {
-        // If direct URL doesn't work, you might need to construct a proper URL
-        // with authentication token
-        console.log("Cannot open URL directly:", url);
-      }
+      // Use invoice service to preview document with streaming endpoint
+      // This handles authentication and proper URL construction
+      await invoiceService.previewDocument(url);
     } catch (error) {
       console.error("Error opening file:", error);
+      Alert.alert("Error", "Failed to open file. Please try again.");
     }
   };
 

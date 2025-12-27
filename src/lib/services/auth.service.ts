@@ -125,7 +125,47 @@ class AuthService {
 
     async isAuthenticated(): Promise<boolean> {
         const token = await SecureStore.getItemAsync('token');
-        return !!token;
+        if (!token) {
+            return false;
+        }
+
+        // If token exists, consider user authenticated
+        // Token validation will happen on actual API calls
+        // If token is expired, API calls will fail and user can re-login
+        return true;
+    }
+
+    /**
+     * Validate token and refresh if needed (only if remember me is enabled)
+     */
+    async validateAndRefreshToken(): Promise<boolean> {
+        const token = await SecureStore.getItemAsync('token');
+        if (!token) {
+            return false;
+        }
+
+        const rememberMe = await this.hasRememberMe();
+        if (!rememberMe) {
+            // If remember me is not enabled, just check if token exists
+            return true;
+        }
+
+        // If remember me is enabled, try to refresh token proactively
+        const refreshToken = await this.getRefreshToken();
+        if (refreshToken) {
+            try {
+                // Refresh token to ensure it's still valid
+                await this.refreshAccessToken(refreshToken);
+                return true;
+            } catch (error) {
+                // Token refresh failed, clear tokens
+                console.log('Token refresh failed, clearing tokens');
+                await this.clearTokens();
+                return false;
+            }
+        }
+
+        return true;
     }
 
     async hasRememberMe(): Promise<boolean> {

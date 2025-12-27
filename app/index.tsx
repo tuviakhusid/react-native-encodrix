@@ -75,16 +75,36 @@ export default function Index() {
 
     const checkAuth = async () => {
       try {
+        // Check if user has remember me enabled
+        const hasRememberMe = await authService.hasRememberMe();
         const isAuthenticated = await authService.isAuthenticated();
+        
+        // If remember me is enabled, validate and refresh token
+        if (hasRememberMe && isAuthenticated) {
+          const isValid = await authService.validateAndRefreshToken();
+          if (isValid) {
+            const elapsed = Date.now() - startTime;
+            const remainingTime = Math.max(0, minSplashTime - elapsed);
+            setTimeout(() => {
+              router.replace("/(tabs)/dashboard");
+            }, remainingTime);
+            return;
+          }
+        } else if (isAuthenticated) {
+          // Token exists but remember me is not enabled
+          const elapsed = Date.now() - startTime;
+          const remainingTime = Math.max(0, minSplashTime - elapsed);
+          setTimeout(() => {
+            router.replace("/(tabs)/dashboard");
+          }, remainingTime);
+          return;
+        }
+
+        // No valid authentication, go to login
         const elapsed = Date.now() - startTime;
         const remainingTime = Math.max(0, minSplashTime - elapsed);
-
         setTimeout(() => {
-          if (isAuthenticated) {
-            router.replace("/(tabs)/dashboard");
-          } else {
-            router.replace("/login");
-          }
+          router.replace("/login");
         }, remainingTime);
       } catch (error) {
         console.error("Auth check failed:", error);
