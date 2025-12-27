@@ -1,0 +1,49 @@
+# EAS Build ignore file
+# Files and directories to exclude from EAS builds
+
+# Dependencies
+node_modules/
+
+# Build artifacts
+.expo/
+dist/
+web-build/
+*.tsbuildinfo
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment files
+.env*.local
+.env
+
+# Native folders (will be generated)
+/android
+/ios
+
+# Test files
+**/__tests__/
+**/*.test.*
+**/*.spec.*
+
+# Documentation
+README.md
+docs/
+
+# Scripts
+scripts/
+
