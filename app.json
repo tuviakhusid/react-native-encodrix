@@ -51,18 +51,6 @@
         {
           "photosPermission": "Allow Encodrix to access your photos to upload invoices."
         }
-      ],
-      [
-        "expo-splash-screen",
-        {
-          "image": "./assets/images/splash-encodrix.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#1e3a8a",
-          "dark": {
-            "backgroundColor": "#1e3a8a"
-          }
-        }
       ]
     ],
     "experiments": {

@@ -18,7 +18,7 @@ import { apolloClient } from "../src/lib/apollo/apolloClient";
 import "react-native-gesture-handler";
 import "react-native-reanimated";
 
-// Keep the splash screen visible while we load fonts
+// Prevent auto-hide so we can control when to hide it
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
@@ -30,6 +30,8 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
+    // Hide Expo splash screen immediately to show custom splash screen
+    // This happens as soon as fonts are loaded or there's an error
     if (fontsLoaded || fontError) {
       SplashScreen.hideAsync();
     }
