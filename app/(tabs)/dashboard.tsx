@@ -187,6 +187,12 @@ export default function DashboardScreen() {
     });
   };
 
+  const truncateVendorName = (name: string, maxLength: number = 30): string => {
+    if (!name || name === "N/A") return name;
+    if (name.length <= maxLength) return name;
+    return name.slice(0, maxLength) + "...";
+  };
+
   const handleDocumentPress = (item: Document) => {
     if (item.id) {
       router.push({
@@ -204,7 +210,7 @@ export default function DashboardScreen() {
 
   const renderDocumentItem = ({ item }: { item: Document }) => {
     const statusColors = getStatusColor(item.workflowStatus || "pending");
-    const vendorName = item.businessName || "N/A";
+    const vendorName = truncateVendorName(item.businessName || "N/A");
     const displayDate = item.issueDate || item.createdAt;
 
     return (
@@ -262,6 +268,11 @@ export default function DashboardScreen() {
   }
 
   if (error) {
+    const handleRetry = async () => {
+      await handleLogout();
+      await refetch();
+    };
+
     return (
       <View style={styles.centerContainer}>
         <Ionicons
@@ -271,7 +282,7 @@ export default function DashboardScreen() {
         />
         <Text style={styles.errorText}>Error loading documents</Text>
         <Text style={styles.errorSubtext}>{error.message}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={() => refetch()}>
+        <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
           <Text style={styles.retryButtonText}>Retry</Text>
         </TouchableOpacity>
       </View>
@@ -389,10 +400,9 @@ export default function DashboardScreen() {
 
         {/* Invoices Section */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>My Invoice Record</Text>
+          <Text style={styles.sectionTitle}>Documents</Text>
           <Text style={styles.sectionSubtitle}>
-            An invoice maker app is a powerful tool designed to simplify billing
-            and payment.
+            Track and manage documents currently being processed.
           </Text>
         </View>
 
@@ -641,7 +651,7 @@ const getStyles = (colors: ReturnType<typeof getColors>) =>
       width: 24,
       height: 24,
       borderRadius: 12,
-      backgroundColor: "#ffffff",
+      backgroundColor: colors.background.light,
       justifyContent: "center",
       alignItems: "center",
     },

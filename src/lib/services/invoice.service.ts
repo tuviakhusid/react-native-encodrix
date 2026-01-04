@@ -1,7 +1,7 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
-import { Linking, Platform, Alert } from 'react-native';
+import { Alert, Linking } from 'react-native';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://dev.encodrix.com/api';
 
@@ -20,13 +20,25 @@ const createApiInstance = async () => {
 class InvoiceService {
   /**
    * Stream file from server and return as blob
-   * Similar to web app's getStreamLine method
+   * Uses the new v2 endpoint with file_id and token as query parameters
    */
-  async getStreamLine(file_url: string): Promise<Blob> {
+  async getStreamLine(file_id: string): Promise<Blob> {
     try {
+      if (!file_id) {
+        throw new Error('File ID is required');
+      }
+
+      const token = await SecureStore.getItemAsync('token');
+      if (!token) {
+        throw new Error('Authentication token is required');
+      }
+
       const api = await createApiInstance();
-      const response = await api.get('/folders/stream_file/', {
-        params: { file_url },
+      const response = await api.get('/stream_file_v2/', {
+        params: {
+          file_id,
+          token,
+        },
         responseType: 'blob',
       });
       return response.data;
@@ -39,10 +51,11 @@ class InvoiceService {
   /**
    * Get streaming URL for document preview
    * Returns a URL that can be used to stream and view the document
+   * Uses the new v2 endpoint with file_id and token as query parameters
    */
-  async getStreamingUrl(s3Url: string): Promise<string | null> {
+  async getStreamingUrl(file_id: string): Promise<string | null> {
     try {
-      if (!s3Url) {
+      if (!file_id) {
         return null;
       }
 
@@ -51,8 +64,8 @@ class InvoiceService {
         return null;
       }
 
-      // Construct streaming URL with authentication
-      const streamingUrl = `${API_URL}/folders/stream_file/?file_url=${encodeURIComponent(s3Url)}`;
+      // Construct streaming URL with authentication using new v2 endpoint
+      const streamingUrl = `${API_URL}/folders/stream_file_v2/?file_id=${encodeURIComponent(file_id)}&token=${encodeURIComponent(token)}`;
       return streamingUrl;
     } catch (error) {
       console.error('Error getting streaming URL:', error);
@@ -63,11 +76,12 @@ class InvoiceService {
   /**
    * Preview document by opening it in browser or external app
    * Uses expo-web-browser for better control and authentication handling
+   * Now uses file_id instead of s3Url
    */
-  async previewDocument(s3Url: string): Promise<void> {
+  async previewDocument(file_id: string): Promise<void> {
     try {
-      if (!s3Url) {
-        Alert.alert('Error', 'File URL is required');
+      if (!file_id) {
+        Alert.alert('Error', 'File ID is required');
         return;
       }
 
@@ -77,25 +91,19 @@ class InvoiceService {
         return;
       }
 
-      // Get streaming URL with authentication
-      const streamingUrl = await this.getStreamingUrl(s3Url);
-      
+      // Get streaming URL with authentication using new v2 endpoint
+      const streamingUrl = await this.getStreamingUrl(file_id);
+
       if (!streamingUrl) {
         Alert.alert('Error', 'Unable to generate file URL. Please check your authentication.');
         return;
       }
 
       // Use expo-web-browser for better document preview
-      // It can handle PDFs, images, and other document types
-      // Note: The API endpoint needs to accept the Authorization header
-      // If the endpoint doesn't support headers in browser requests,
-      // we may need to pass token as query parameter or use a different approach
-      
+      // Token is now included in the URL as a query parameter
+
       try {
         await WebBrowser.openBrowserAsync(streamingUrl, {
-          // Add authentication headers if supported
-          // Note: WebBrowser may not support custom headers directly
-          // The backend should accept token via query parameter or cookie
           enableBarCollapsing: false,
           showInRecents: true,
         });
@@ -121,9 +129,10 @@ class InvoiceService {
 
   /**
    * Get file URL for direct access (if supported)
+   * Now uses file_id instead of s3Url
    */
-  async getFileUrl(s3Url: string): Promise<string | null> {
-    return this.getStreamingUrl(s3Url);
+  async getFileUrl(file_id: string): Promise<string | null> {
+    return this.getStreamingUrl(file_id);
   }
 }
 

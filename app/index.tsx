@@ -38,11 +38,8 @@ export default function Index() {
   const [loading, setLoading] = useState(true);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [scaleAnim] = useState(new Animated.Value(0.8));
-  const [textIndex, setTextIndex] = useState(0);
-  const [displayText, setDisplayText] = useState("");
 
-  const typewriterText = "intelligent insights";
-  const minSplashTime = 2000; // Minimum 2 seconds splash screen
+  const minSplashTime = 3000; // Minimum 3 seconds splash screen
 
   useEffect(() => {
     // Animate splash screen
@@ -59,16 +56,7 @@ export default function Index() {
         useNativeDriver: true,
       }),
     ]).start();
-
-    // Typewriter effect
-    if (textIndex < typewriterText.length) {
-      const timeout = setTimeout(() => {
-        setDisplayText((prev) => prev + typewriterText[textIndex]);
-        setTextIndex((prev) => prev + 1);
-      }, 100);
-      return () => clearTimeout(timeout);
-    }
-  }, [textIndex, fadeAnim, scaleAnim]);
+  }, [fadeAnim, scaleAnim]);
 
   useEffect(() => {
     const startTime = Date.now();
@@ -78,7 +66,7 @@ export default function Index() {
         // Check if user has remember me enabled
         const hasRememberMe = await authService.hasRememberMe();
         const isAuthenticated = await authService.isAuthenticated();
-        
+
         // If remember me is enabled, validate and refresh token
         if (hasRememberMe && isAuthenticated) {
           const isValid = await authService.validateAndRefreshToken();
@@ -129,7 +117,7 @@ export default function Index() {
       style={styles.container}
     >
       {/* Animated Background Elements */}
-      <Animated.View
+      {/* <Animated.View
         style={[
           styles.backgroundCircle1,
           {
@@ -139,7 +127,7 @@ export default function Index() {
             }),
           },
         ]}
-      />
+      /> */}
       <Animated.View
         style={[
           styles.backgroundCircle2,
@@ -228,10 +216,7 @@ export default function Index() {
         >
           <Text style={styles.message}>
             Transforming documents into{"\n"}
-            <Text style={styles.highlightText}>{displayText}</Text>
-            {textIndex < typewriterText.length && (
-              <Text style={styles.cursor}>|</Text>
-            )}
+            <Text style={styles.highlightText}>intelligent insights</Text>
           </Text>
         </Animated.View>
 
@@ -356,12 +341,6 @@ const styles = StyleSheet.create({
   },
   highlightText: {
     color: colors.primary.light,
-    fontWeight: "600",
-    fontFamily: typography.fontFamily.semibold,
-  },
-  cursor: {
-    color: colors.primary.light,
-    fontSize: 20,
     fontWeight: "600",
     fontFamily: typography.fontFamily.semibold,
   },

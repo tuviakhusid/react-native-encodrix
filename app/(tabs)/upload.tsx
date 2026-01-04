@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { useEffect, useState } from "react";
 import {
@@ -72,10 +73,11 @@ const GET_CURRENT_USER_DATA = gql`
   }
 `;
 
-interface SelectedImage {
+interface SelectedFile {
   uri: string;
   type: string;
   name: string;
+  isImage?: boolean;
 }
 
 interface Branch {
@@ -88,7 +90,7 @@ export default function UploadScreen() {
   const { theme } = useTheme();
   const colors = getColors(theme);
   const styles = getStyles(colors);
-  const [selectedImages, setSelectedImages] = useState<SelectedImage[]>([]);
+  const [selectedImages, setSelectedImages] = useState<SelectedFile[]>([]);
   const [uploading, setUploading] = useState(false);
   const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
   const [showBranchModal, setShowBranchModal] = useState(false);
@@ -195,7 +197,6 @@ export default function UploadScreen() {
               jpg: "image/jpeg",
               jpeg: "image/jpeg",
               png: "image/png",
-              pdf: "application/pdf",
             };
             mimeType = mimeMap[extension] || "image/jpeg";
           }
@@ -204,12 +205,66 @@ export default function UploadScreen() {
             uri: asset.uri,
             type: mimeType,
             name: asset.fileName || `image_${Date.now()}.${extension}`,
+            isImage: true,
           };
         });
         setSelectedImages([...selectedImages, ...newImages]);
       }
     } catch (error) {
       Alert.alert("Error", "Failed to select invoice image");
+    }
+  };
+
+  const pickDocument = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: [
+          "application/pdf",
+          "application/msword",
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "image/*",
+        ],
+        multiple: true,
+        copyToCacheDirectory: true,
+      });
+
+      if (!result.canceled && result.assets) {
+        const newFiles = result.assets.map((asset) => {
+          // Determine MIME type from asset
+          let mimeType = asset.mimeType || "application/octet-stream";
+          const fileName = asset.name || asset.uri.split("/").pop() || "";
+          const extension = fileName.split(".").pop()?.toLowerCase() || "";
+
+          // MIME type mapping for common document types
+          const mimeMap: Record<string, string> = {
+            pdf: "application/pdf",
+            doc: "application/msword",
+            docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            jpg: "image/jpeg",
+            jpeg: "image/jpeg",
+            png: "image/png",
+            gif: "image/gif",
+            bmp: "image/bmp",
+            webp: "image/webp",
+          };
+
+          if (!mimeType || mimeType === "application/octet-stream") {
+            mimeType = mimeMap[extension] || "application/octet-stream";
+          }
+
+          const isImage = mimeType.startsWith("image/");
+
+          return {
+            uri: asset.uri,
+            type: mimeType,
+            name: asset.name || `document_${Date.now()}.${extension}`,
+            isImage,
+          };
+        });
+        setSelectedImages([...selectedImages, ...newFiles]);
+      }
+    } catch (error) {
+      Alert.alert("Error", "Failed to select document");
     }
   };
 
@@ -237,6 +292,7 @@ export default function UploadScreen() {
           uri: asset.uri,
           type: mimeType,
           name: asset.fileName || `photo_${Date.now()}.jpg`,
+          isImage: true,
         };
         setSelectedImages([...selectedImages, newImage]);
       }
@@ -249,6 +305,24 @@ export default function UploadScreen() {
     setSelectedImages(selectedImages.filter((_, i) => i !== index));
   };
 
+  const getFileIcon = (file: SelectedFile) => {
+    const mimeType = file.type?.toLowerCase() || "";
+    if (file.isImage || mimeType.startsWith("image/")) {
+      return "image";
+    }
+    if (mimeType.includes("pdf")) {
+      return "document-text";
+    }
+    if (
+      mimeType.includes("word") ||
+      mimeType.includes("msword") ||
+      mimeType.includes("wordprocessingml")
+    ) {
+      return "document";
+    }
+    return "document-text";
+  };
+
   const handleBranchSelect = (branch: Branch) => {
     setSelectedBranch(branch);
     SecureStore.setItemAsync("branchId", branch.id);
@@ -259,7 +333,7 @@ export default function UploadScreen() {
     if (selectedImages.length === 0) {
       Alert.alert(
         "No Invoices",
-        "Please select at least one invoice image to upload"
+        "Please select at least one invoice file to upload"
       );
       return;
     }
@@ -280,28 +354,38 @@ export default function UploadScreen() {
 
       // For React Native with apollo-upload-client, we need to use ReactNativeFile
       // This properly formats files for the backend which expects content_type attribute
-      const files = selectedImages.map((image) => {
+      const files = selectedImages.map((file) => {
         // Ensure we have a proper MIME type
-        let mimeType = image.type || "image/jpeg";
+        let mimeType = file.type || "application/octet-stream";
 
         // If type is not set or invalid, try to infer from file name
-        if (!mimeType || mimeType === "image") {
-          const extension = image.name.split(".").pop()?.toLowerCase();
+        if (
+          !mimeType ||
+          mimeType === "image" ||
+          mimeType === "application/octet-stream"
+        ) {
+          const extension = file.name.split(".").pop()?.toLowerCase();
           const mimeMap: Record<string, string> = {
             jpg: "image/jpeg",
             jpeg: "image/jpeg",
             png: "image/png",
+            gif: "image/gif",
+            bmp: "image/bmp",
+            webp: "image/webp",
             pdf: "application/pdf",
+            doc: "application/msword",
+            docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
           };
-          mimeType = mimeMap[extension || ""] || "image/jpeg";
+          mimeType =
+            mimeMap[extension || ""] || file.type || "application/octet-stream";
         }
 
         // Use ReactNativeFile to properly format files for apollo-upload-client
         // This ensures the backend receives file objects with content_type attribute
         const fileObject = new ReactNativeFile({
-          uri: image.uri,
+          uri: file.uri,
           type: mimeType,
-          name: image.name,
+          name: file.name,
         });
 
         // Log for debugging (remove in production)
@@ -373,7 +457,7 @@ export default function UploadScreen() {
             <View style={styles.greetingText}>
               <Text style={styles.greeting}>Upload Invoice</Text>
               <Text style={styles.greetingSubtitle}>
-                Capture or select invoice images for data extraction
+                Capture or select invoice files for data extraction
               </Text>
             </View>
           </View>
@@ -436,7 +520,7 @@ export default function UploadScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={pickImage}
+            onPress={pickDocument}
             disabled={uploading}
             activeOpacity={0.8}
             style={[
@@ -444,7 +528,11 @@ export default function UploadScreen() {
               uploading && styles.actionButtonDisabled,
             ]}
           >
-            <Ionicons name="images" size={24} color={colors.background.light} />
+            <Ionicons
+              name="document-attach"
+              size={24}
+              color={colors.background.light}
+            />
             <Text style={styles.actionButtonText} numberOfLines={1}>
               Select Invoice
             </Text>
@@ -457,9 +545,22 @@ export default function UploadScreen() {
               Selected Invoices ({selectedImages.length})
             </Text>
             <View style={styles.imagesGrid}>
-              {selectedImages.map((image, index) => (
+              {selectedImages.map((file, index) => (
                 <View key={index} style={styles.imageContainer}>
-                  <Image source={{ uri: image.uri }} style={styles.image} />
+                  {file.isImage ? (
+                    <Image source={{ uri: file.uri }} style={styles.image} />
+                  ) : (
+                    <View style={styles.documentPreview}>
+                      <Ionicons
+                        name={getFileIcon(file)}
+                        size={48}
+                        color={colors.primary.DEFAULT}
+                      />
+                      <Text style={styles.documentName} numberOfLines={2}>
+                        {file.name}
+                      </Text>
+                    </View>
+                  )}
                   <TouchableOpacity
                     style={styles.removeButton}
                     onPress={() => removeImage(index)}
@@ -514,8 +615,8 @@ export default function UploadScreen() {
             />
             <Text style={styles.emptyText}>No invoices selected</Text>
             <Text style={styles.emptySubtext}>
-              Capture or select invoice images to extract data and sync with
-              your ERP system
+              Capture or select invoice images, PDFs, or documents to extract
+              data and sync with your ERP system
             </Text>
           </View>
         )}
@@ -696,6 +797,25 @@ const getStyles = (colors: ReturnType<typeof getColors>) =>
       borderRadius: borderRadius.md,
       resizeMode: "cover",
       ...shadows.sm,
+    },
+    documentPreview: {
+      width: "100%",
+      height: 150,
+      borderRadius: borderRadius.md,
+      backgroundColor: colors.background.light,
+      justifyContent: "center",
+      alignItems: "center",
+      padding: spacing.md,
+      borderWidth: 1,
+      borderColor: colors.border.light,
+      ...shadows.sm,
+    },
+    documentName: {
+      fontSize: typography.sizes.xs,
+      fontFamily: typography.fontFamily.regular,
+      color: colors.text.primary,
+      marginTop: spacing.xs,
+      textAlign: "center",
     },
     removeButton: {
       position: "absolute",

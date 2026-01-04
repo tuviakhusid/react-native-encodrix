@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Linking,
+  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -21,7 +21,6 @@ import {
 } from "../../src/constants/theme";
 import { useTheme } from "../../src/context/theme-context";
 import invoiceService from "../../src/lib/services/invoice.service";
-import { Alert } from "react-native";
 
 const GET_EXTRACTED_DATA = gql`
   query GetExtractedData($invoiceId: String!) {
@@ -126,16 +125,19 @@ export default function InvoiceDetailScreen() {
     }
   };
 
-  const handleOpenFile = async (url: string) => {
-    if (!url) {
-      Alert.alert("Error", "File URL is not available");
+  const handleOpenFile = async (fileId?: string) => {
+    // Use documentId or invoiceDataId as file_id for the new v2 endpoint
+    const file_id = fileId || documentId || invoiceDataId;
+
+    if (!file_id) {
+      Alert.alert("Error", "File ID is not available");
       return;
     }
 
     try {
       // Use invoice service to preview document with streaming endpoint
-      // This handles authentication and proper URL construction
-      await invoiceService.previewDocument(url);
+      // This handles authentication and proper URL construction using file_id
+      await invoiceService.previewDocument(file_id);
     } catch (error) {
       console.error("Error opening file:", error);
       Alert.alert("Error", "Failed to open file. Please try again.");
@@ -341,14 +343,11 @@ export default function InvoiceDetailScreen() {
         </View>
 
         {/* Original File Link */}
-        {(extractedData?.s3_url || s3Url) && (
+        {(documentId || invoiceDataId) && (
           <TouchableOpacity
             style={styles.fileButton}
             onPress={() => {
-              const fileUrl = extractedData?.s3_url || s3Url;
-              if (fileUrl) {
-                handleOpenFile(fileUrl);
-              }
+              handleOpenFile();
             }}
             activeOpacity={0.7}
           >
