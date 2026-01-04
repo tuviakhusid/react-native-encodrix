@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Manage your documents with Encodrix",
+    "name": "Encodrix",
     "slug": "encodrix-scan-invoice-app",
-    "version": "1.0.0",
+    "version": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/images/encodrix.png",
     "scheme": "encodrix",
