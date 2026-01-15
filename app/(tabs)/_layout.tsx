@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
-import { Platform, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   borderRadius,
@@ -31,11 +31,12 @@ export default function TabsLayout() {
         },
         tabBarStyle: {
           backgroundColor:
-            theme === "dark" ? colors.background.light : "#e6edff", // Light blue background from TopBar lightGradient
+            theme === "dark"
+              ? colors.background.card
+              : colors.background.DEFAULT,
           borderTopWidth: 0,
-          height: Platform.OS === "ios" ? 70 + insets.bottom : 70,
-          paddingBottom:
-            Platform.OS === "ios" ? Math.max(insets.bottom, 12) : 12,
+          height: 70 + insets.bottom,
+          paddingBottom: Math.max(insets.bottom, 12),
           paddingTop: 12,
           paddingHorizontal: spacing.lg,
           ...shadows.lg,

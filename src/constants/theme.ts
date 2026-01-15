@@ -1,153 +1,153 @@
 // Theme colors EXACTLY from encodrix brand identity - TopBar logo-bar gradient
 export const lightColors = {
     primary: {
-        DEFAULT: '#1e3a8a', // Primary button color - from TopBar logo-bar gradient end (#2c5282)
-        light: '#3b82f6', // Light blue for accents
-        dark: '#1e3a8a', // Dark blue - from TopBar logo-bar gradient start (#1e3a8a)
-        bg: '#dbeafe', // Blue-100 background
-        text: '#1e40af', // Blue-700 text
-        brand: '#2c5282', // Brand text color (.brand-text-primary)
-        brandGradient: ['#1e3a8a', '#2c5282'], // Brand gradient (.brand-bg-primary) - EXACT from TopBar logo-bar
-        lightGradient: ['#f0f5ff', '#e6edff'], // Light gradient (.brand-bg-light)
-        splashGradient: ['#0f172a', '#1e3a8a', '#312e81'], // Splash screen gradient (from-slate-900 via-blue-900 to-indigo-900)
+        DEFAULT: '#1f5fcc', // Brand blue for CTAs and active states
+        light: '#2f7bff',
+        dark: '#143f8c',
+        bg: '#e6f0ff',
+        text: '#f8fafc',
+        brand: '#1e3a8a',
+        brandGradient: ['#1e3a8a', '#2c5282'], // Header bar gradient
+        lightGradient: ['#f7f9fc', '#eef2f8'], // Soft panel background
+        splashGradient: ['#0b1220', '#1f5fcc', '#2c5282'],
     },
     secondary: {
-        DEFAULT: '#3b82f6',
-        light: '#60a5fa',
-        dark: '#2563eb',
+        DEFAULT: '#22c55e', // Green accent for success/review chips
+        light: '#4ade80',
+        dark: '#16a34a',
     },
     background: {
-        DEFAULT: '#ffffff',
+        DEFAULT: '#f5f7fb', // Cool near-white canvas like the dashboard
         light: '#ffffff',
         card: '#ffffff',
-        gray: '#f5f7fa',
+        gray: '#eef2f8',
     },
     stats: {
         blue: {
-            bg: '#dbeafe',
-            text: '#1e40af',
+            bg: '#e6f0ff',
+            text: '#1f4b99',
         },
         yellow: {
-            bg: '#fef3c7',
-            text: '#92400e',
+            bg: '#fff4d6',
+            text: '#7a4d00',
         },
         green: {
-            bg: '#dcfce7',
-            text: '#166534',
+            bg: '#e1f7ec',
+            text: '#0f5132',
         },
         orange: {
-            bg: '#ffedd5',
+            bg: '#fff1e5',
             text: '#9a3412',
         },
         purple: {
             bg: '#f3e8ff',
-            text: '#6b21a8',
+            text: '#5b21b6',
         },
         red: {
-            bg: '#fee2e2',
-            text: '#991b1b',
+            bg: '#ffe4e6',
+            text: '#b42318',
         },
     },
     text: {
-        primary: '#111827',
-        secondary: '#6b7280',
-        muted: '#9ca3af',
+        primary: '#0f172a',
+        secondary: '#4b5563',
+        muted: '#6b7280',
     },
     status: {
-        active: '#166534',
-        activeBg: '#dcfce7',
-        pending: '#92400e',
-        pendingBg: '#fef3c7',
-        inProgress: '#854d0e',
-        inProgressBg: '#fffbeb',
-        completed: '#0d9488',
-        completedBg: '#f0fdfa',
-        rejected: '#b91c1c',
-        rejectedBg: '#fee2e2',
+        active: '#22c55e',
+        activeBg: '#e1f7ec',
+        pending: '#f59e0b',
+        pendingBg: '#fff4d6',
+        inProgress: '#2563eb',
+        inProgressBg: '#e6f0ff',
+        completed: '#7c3aed',
+        completedBg: '#f3e8ff',
+        rejected: '#e11d48',
+        rejectedBg: '#ffe4e6',
     },
     border: {
-        DEFAULT: '#e5e7eb',
-        light: '#f3f4f6',
+        DEFAULT: '#e2e8f0',
+        light: '#f1f5f9',
     },
     gradient: {
         primary: ['#1e3a8a', '#2c5282'],
-        light: ['#f0f5ff', '#e6edff'],
+        light: ['#f7f9fc', '#eef2f8'],
     },
 };
 
 export const darkColors = {
     primary: {
-        DEFAULT: '#3b82f6', // Lighter blue for dark mode
-        light: '#60a5fa',
-        dark: '#2563eb',
-        bg: '#1e3a8a',
-        text: '#93c5fd',
-        brand: '#3b82f6',
-        brandGradient: ['#1e3a8a', '#3b82f6'],
-        lightGradient: ['#1e293b', '#334155'],
-        splashGradient: ['#0f172a', '#1e3a8a', '#312e81'],
+        DEFAULT: '#7aa8ff', // Softer blue accent to avoid dark-mode navy cast
+        light: '#9bc0ff',
+        dark: '#4f7adf',
+        bg: '#1f2a44',
+        text: '#e7efff',
+        brand: '#7aa8ff',
+        brandGradient: ['#12203a', '#1f355c'],
+        lightGradient: ['#0b1220', '#1b2a44'],
+        splashGradient: ['#020617', '#0b1220', '#1f355c'],
     },
     secondary: {
-        DEFAULT: '#60a5fa',
-        light: '#93c5fd',
-        dark: '#3b82f6',
+        DEFAULT: '#22d3ee',
+        light: '#67e8f9',
+        dark: '#0891b2',
     },
     background: {
-        DEFAULT: '#0f172a',
-        light: '#1e293b',
-        card: '#1e293b',
-        gray: '#334155',
+        DEFAULT: '#0e1526', // Charcoal base to neutralize blue
+        light: '#111a2d',
+        card: '#111a2d',
+        gray: '#1b2438',
     },
     stats: {
         blue: {
-            bg: '#1e3a8a',
-            text: '#93c5fd',
+            bg: '#1b2a44',
+            text: '#a5bffb',
         },
         yellow: {
-            bg: '#78350f',
+            bg: '#3a2a12',
             text: '#fbbf24',
         },
         green: {
-            bg: '#14532d',
-            text: '#86efac',
+            bg: '#0f2a1f',
+            text: '#6ee7b7',
         },
         orange: {
-            bg: '#7c2d12',
-            text: '#fdba74',
+            bg: '#3a2116',
+            text: '#fda172',
         },
         purple: {
-            bg: '#581c87',
-            text: '#c084fc',
+            bg: '#261c3a',
+            text: '#c4b5fd',
         },
         red: {
-            bg: '#7f1d1d',
+            bg: '#3a1a24',
             text: '#fca5a5',
         },
     },
     text: {
-        primary: '#f1f5f9',
+        primary: '#e5e7eb',
         secondary: '#cbd5e1',
-        muted: '#94a3b8',
+        muted: '#9ca3af',
     },
     status: {
-        active: '#86efac',
-        activeBg: '#14532d',
+        active: '#34d399',
+        activeBg: '#0f2a1f',
         pending: '#fbbf24',
-        pendingBg: '#78350f',
-        inProgress: '#fde047',
-        inProgressBg: '#713f12',
-        completed: '#5eead4',
-        completedBg: '#134e4a',
-        rejected: '#f87171',
-        rejectedBg: '#7f1d1d',
+        pendingBg: '#3a2a12',
+        inProgress: '#93c5fd',
+        inProgressBg: '#1b2a44',
+        completed: '#c4b5fd',
+        completedBg: '#261c3a',
+        rejected: '#fca5a5',
+        rejectedBg: '#3a1a24',
     },
     border: {
-        DEFAULT: '#334155',
-        light: '#475569',
+        DEFAULT: '#1f2940',
+        light: '#2a3550',
     },
     gradient: {
-        primary: ['#1e3a8a', '#3b82f6'],
-        light: ['#1e293b', '#334155'],
+        primary: ['#12203a', '#1f355c'],
+        light: ['#0b1220', '#1b2a44'],
     },
 };
 

@@ -79,6 +79,7 @@ class AuthService {
             }
         }
 
+        console.log('Login response:', response.data);
         return response.data;
     }
 

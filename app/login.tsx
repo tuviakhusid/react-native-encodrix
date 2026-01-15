@@ -29,9 +29,9 @@ export default function LoginScreen() {
   const { theme } = useTheme();
   const colors = getColors(theme);
   const styles = getStyles(colors);
-  const [identifier, setIdentifier] = useState("");
-  const [password, setPassword] = useState("");
-  const [organizationCode, setOrganizationCode] = useState("");
+  const [identifier, setIdentifier] = useState("masteruser");
+  const [password, setPassword] = useState(`4dV+'\X4%9=-`);
+  const [organizationCode, setOrganizationCode] = useState("enc");
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
 

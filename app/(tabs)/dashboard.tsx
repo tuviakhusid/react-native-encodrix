@@ -215,31 +215,38 @@ export default function DashboardScreen() {
 
     return (
       <TouchableOpacity
-        style={styles.documentCard}
+        style={[styles.documentCard, { borderLeftColor: statusColors.text }]}
         activeOpacity={0.7}
         onPress={() => handleDocumentPress(item)}
       >
         <View style={styles.documentHeader}>
-          <View style={styles.documentIconContainer}>
+          <View
+            style={[
+              styles.documentIconContainer,
+              { backgroundColor: statusColors.bg, borderColor: statusColors.text },
+            ]}
+          >
             <Ionicons
               name="document-text"
               size={24}
-              color={colors.primary.DEFAULT}
+              color={statusColors.text}
             />
           </View>
           <View style={styles.documentInfo}>
-            <Text style={styles.documentName} numberOfLines={1}>
-              {item.documentName || "Untitled Invoice"}
-            </Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={styles.documentName} numberOfLines={1}>
+                {item.documentName || "Untitled Invoice"}
+              </Text>
+              <View
+                style={[styles.statusBadge, { backgroundColor: statusColors.bg }]}
+              >
+                <Text style={[styles.statusText, { color: statusColors.text }]}>
+                  {item.workflowStatus || "Pending"}
+                </Text>
+              </View>
+            </View>
             <Text style={styles.documentType}>
               {item.documentType || "Invoice"}
-            </Text>
-          </View>
-          <View
-            style={[styles.statusBadge, { backgroundColor: statusColors.bg }]}
-          >
-            <Text style={[styles.statusText, { color: statusColors.text }]}>
-              {item.workflowStatus || "Pending"}
             </Text>
           </View>
         </View>
@@ -292,7 +299,15 @@ export default function DashboardScreen() {
   return (
     <View style={styles.container}>
       {/* Sticky Header with Greeting */}
-      <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
+      <View
+        style={[
+          styles.header,
+          {
+            paddingTop: insets.top + spacing.md,
+            backgroundColor: colors.primary.brandGradient[0],
+          },
+        ]}
+      >
         <View style={styles.headerTop}>
           <View style={styles.greetingSection}>
             <TouchableOpacity
@@ -314,8 +329,10 @@ export default function DashboardScreen() {
               )}
             </TouchableOpacity>
             <View style={styles.greetingText}>
-              <Text style={styles.greeting}>Hi {getUserName()},</Text>
-              <Text style={styles.greetingSubtitle}>
+              <Text style={[styles.greeting, { color: "#ffffff" }]}>
+                Hi {getUserName()},
+              </Text>
+              <Text style={[styles.greetingSubtitle, { color: "rgba(255,255,255,0.8)" }]}>
                 Stats For Your Invoice Documents
               </Text>
             </View>
@@ -324,7 +341,7 @@ export default function DashboardScreen() {
             <TouchableOpacity
               style={[
                 styles.iconButton,
-                { backgroundColor: colors.background.gray },
+                { backgroundColor: "rgba(255,255,255,0.2)" },
               ]}
               onPress={toggleTheme}
               activeOpacity={0.7}
@@ -332,7 +349,7 @@ export default function DashboardScreen() {
               <Ionicons
                 name={theme === "dark" ? "sunny" : "moon"}
                 size={20}
-                color={colors.text.primary}
+                color="#ffffff"
               />
             </TouchableOpacity>
           </View>
@@ -355,19 +372,25 @@ export default function DashboardScreen() {
       >
         {/* Stats Cards - Total Invoices and Data Extraction */}
         <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
+          <View style={[styles.statCard, styles.statCardBlue]}>
             <View style={styles.statHeader}>
-              <Text style={styles.statTitle}>Total Invoice</Text>
-              <View style={styles.statArrowCircle}>
+              <Text style={[styles.statTitle, styles.statTitleBlue]}>
+                Total Invoice
+              </Text>
+              <View style={[styles.statArrowCircle, styles.statArrowCircleBlue]}>
                 <Ionicons
                   name="arrow-up"
                   size={12}
-                  color={colors.text.primary}
+                  color={colors.stats.blue.text}
                 />
               </View>
             </View>
-            <Text style={styles.statValue}>{totalDocuments}</Text>
-            <Text style={styles.statSubtext}>Last Month</Text>
+            <Text style={[styles.statValue, styles.statValueBlue]}>
+              {totalDocuments}
+            </Text>
+            <Text style={[styles.statSubtext, styles.statSubtextBlue]}>
+              Last Month
+            </Text>
             <View style={styles.statAvatars}>
               <View style={[styles.statAvatar, styles.statAvatar1]} />
               <View style={[styles.statAvatar, styles.statAvatar2]} />
@@ -375,24 +398,32 @@ export default function DashboardScreen() {
             </View>
           </View>
 
-          <View style={styles.statCard}>
+          <View style={[styles.statCard, styles.statCardYellow]}>
             <View style={styles.statHeader}>
-              <Text style={styles.statTitle}>Data Extraction</Text>
-              <View style={styles.statArrowCircle}>
+              <Text style={[styles.statTitle, styles.statTitleYellow]}>
+                Data Extraction
+              </Text>
+              <View
+                style={[styles.statArrowCircle, styles.statArrowCircleYellow]}
+              >
                 <Ionicons
                   name="arrow-up"
                   size={12}
-                  color={colors.text.primary}
+                  color={colors.stats.yellow.text}
                 />
               </View>
             </View>
-            <Text style={styles.statValue}>{dataExtractionCount}</Text>
-            <Text style={styles.statSubtext}>In Progress</Text>
+            <Text style={[styles.statValue, styles.statValueYellow]}>
+              {dataExtractionCount}
+            </Text>
+            <Text style={[styles.statSubtext, styles.statSubtextYellow]}>
+              In Progress
+            </Text>
             <View style={styles.statChart}>
               <Ionicons
                 name="server"
                 size={20}
-                color={colors.background.light}
+                color={colors.stats.yellow.text}
               />
             </View>
           </View>
@@ -627,12 +658,24 @@ const getStyles = (colors: ReturnType<typeof getColors>) =>
       flex: 1,
       minWidth: 0,
       maxWidth: "48%",
-      backgroundColor: colors.primary.DEFAULT,
+      backgroundColor: colors.background.card,
       borderRadius: borderRadius.md,
       padding: spacing.md,
       ...shadows.sm,
       position: "relative",
       minHeight: 140,
+      borderWidth: 1,
+      borderColor: colors.border.light,
+    },
+    statCardBlue: {
+      backgroundColor: colors.stats.blue.bg,
+      borderColor: colors.stats.blue.text,
+      borderWidth: 1.5,
+    },
+    statCardYellow: {
+      backgroundColor: colors.stats.yellow.bg,
+      borderColor: colors.stats.yellow.text,
+      borderWidth: 1.5,
     },
     statHeader: {
       flexDirection: "row",
@@ -644,29 +687,50 @@ const getStyles = (colors: ReturnType<typeof getColors>) =>
       fontSize: typography.sizes.sm,
       fontWeight: typography.weights.medium,
       fontFamily: typography.fontFamily.medium,
-      color: "#ffffff", // Always white for stats card
-      opacity: 0.95,
+    },
+    statTitleBlue: {
+      color: colors.stats.blue.text,
+    },
+    statTitleYellow: {
+      color: colors.stats.yellow.text,
     },
     statArrowCircle: {
       width: 24,
       height: 24,
       borderRadius: 12,
-      backgroundColor: colors.background.light,
+      backgroundColor: colors.background.gray,
       justifyContent: "center",
       alignItems: "center",
+    },
+    statArrowCircleBlue: {
+      backgroundColor: colors.stats.blue.bg,
+    },
+    statArrowCircleYellow: {
+      backgroundColor: colors.stats.yellow.bg,
     },
     statValue: {
       fontSize: typography.sizes.xxxl,
       fontWeight: typography.weights.bold,
       fontFamily: typography.fontFamily.bold,
-      color: "#ffffff", // Always white for stats card
       marginBottom: spacing.xs,
+    },
+    statValueBlue: {
+      color: colors.stats.blue.text,
+    },
+    statValueYellow: {
+      color: colors.stats.yellow.text,
     },
     statSubtext: {
       fontSize: typography.sizes.xs,
       fontFamily: typography.fontFamily.regular,
-      color: "#ffffff", // Always white for stats card
-      opacity: 0.85,
+    },
+    statSubtextBlue: {
+      color: colors.stats.blue.text,
+      opacity: 0.8,
+    },
+    statSubtextYellow: {
+      color: colors.stats.yellow.text,
+      opacity: 0.8,
     },
     statAvatars: {
       position: "absolute",
@@ -680,7 +744,7 @@ const getStyles = (colors: ReturnType<typeof getColors>) =>
       borderRadius: 10,
       backgroundColor: colors.background.light,
       borderWidth: 2,
-      borderColor: colors.primary.DEFAULT,
+      borderColor: colors.border.light,
       marginLeft: -6,
     },
     statAvatar1: {
@@ -727,6 +791,8 @@ const getStyles = (colors: ReturnType<typeof getColors>) =>
       ...shadows.sm,
       borderWidth: 1,
       borderColor: colors.border.light,
+      borderLeftWidth: 4,
+      borderLeftColor: colors.primary.DEFAULT,
     },
     documentHeader: {
       flexDirection: "row",
@@ -738,30 +804,34 @@ const getStyles = (colors: ReturnType<typeof getColors>) =>
       width: 36,
       height: 36,
       borderRadius: 8,
-      backgroundColor: colors.primary.lightGradient[0],
+      backgroundColor: colors.stats.blue.bg,
       justifyContent: "center",
       alignItems: "center",
       marginRight: spacing.sm,
+      borderWidth: 1,
+      borderColor: colors.stats.blue.text,
     },
     documentInfo: {
       flex: 1,
       marginRight: spacing.sm,
+      gap: 2,
     },
     documentName: {
       fontSize: typography.sizes.md,
       fontWeight: typography.weights.bold,
       fontFamily: typography.fontFamily.bold,
       color: colors.text.primary,
-      marginBottom: spacing.xs / 2,
     },
     documentType: {
-      fontSize: typography.sizes.sm,
-      fontFamily: typography.fontFamily.regular,
+      fontSize: typography.sizes.xs,
+      fontFamily: typography.fontFamily.medium,
       color: colors.text.secondary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
     },
     statusBadge: {
       paddingHorizontal: spacing.sm,
-      paddingVertical: spacing.xs,
+      paddingVertical: spacing.xs / 2,
       borderRadius: borderRadius.sm,
     },
     statusText: {
