@@ -1,4 +1,4 @@
-import { gql, useQuery } from "@apollo/client";
+import { gql, useMutation, useQuery } from "@apollo/client";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
@@ -6,21 +6,25 @@ import {
   CheckCircle2,
   Clock,
   FileText,
+  Filter,
   Moon,
   Sun,
+  Trash2
 } from "lucide-react-native";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Image,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import FilterBottomSheet from "../../components/FilterBottomSheet";
 import ProfileBottomSheet from "../../components/ProfileBottomSheet";
 import {
   borderRadius,
@@ -55,6 +59,7 @@ const GET_PROCESSED_DOCUMENTS = gql`
     $pageSize: Int
     $fromDate: String
     $toDate: String
+    $filterByDate: String
   ) {
     documentsByStatus(
       status: $status
@@ -64,6 +69,7 @@ const GET_PROCESSED_DOCUMENTS = gql`
       pageSize: $pageSize
       fromDate: $fromDate
       toDate: $toDate
+      filterByDate: $filterByDate
     ) {
       documents {
         id
@@ -85,6 +91,17 @@ const GET_PROCESSED_DOCUMENTS = gql`
       page
       pageSize
       totalPages
+    }
+  }
+`;
+
+const DELETE_DOCUMENT = gql`
+  mutation DeleteDocument($documentId: String!, $deleteFromS3: Boolean!) {
+    deleteDocument(documentId: $documentId, deleteFromS3: $deleteFromS3) {
+      ok
+      deleted
+      error
+      message
     }
   }
 `;
@@ -129,20 +146,79 @@ function StatCard({
   );
 }
 
+// Helper function to get date string in YYYY-MM-DD format
+const formatDateForQuery = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+// Helper function to get last 30 days date range
+const getLast30DaysRange = () => {
+  const today = new Date();
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(today.getDate() - 30);
+  return {
+    fromDate: formatDateForQuery(thirtyDaysAgo),
+    toDate: formatDateForQuery(today),
+  };
+};
+
 export default function DashboardScreen() {
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
+  
+  // Applied filters (used in query)
+  const [appliedSelectedFilter, setAppliedSelectedFilter] = useState<string | null>(null);
+  const [appliedSearchQuery, setAppliedSearchQuery] = useState("");
+  const [appliedFilterByDate, setAppliedFilterByDate] = useState<"processing_date" | "issue_date">("processing_date");
+  const [appliedFromDate, setAppliedFromDate] = useState("");
+  const [appliedToDate, setAppliedToDate] = useState("");
+  
+  // Temporary filters (used in filter sheet, not applied until Apply is clicked)
   const [selectedFilter, setSelectedFilter] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterByDate, setFilterByDate] = useState<"processing_date" | "issue_date">("processing_date");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  
+  const [showFilterSheet, setShowFilterSheet] = useState(false);
   const { theme, toggleTheme } = useTheme();
   const colors = getColors(theme);
   const styles = getStyles(colors);
 
-  const { data, loading, error, refetch } = useQuery(GET_PROCESSED_DOCUMENTS, {
+  // Initialize date range to last 30 days
+  useEffect(() => {
+    const { fromDate: initialFrom, toDate: initialTo } = getLast30DaysRange();
+    setFromDate(initialFrom);
+    setToDate(initialTo);
+    setAppliedFromDate(initialFrom);
+    setAppliedToDate(initialTo);
+  }, []);
+
+  const [deleteDocument] = useMutation(DELETE_DOCUMENT);
+
+  const { data, loading, error, refetch, networkStatus } = useQuery(GET_PROCESSED_DOCUMENTS, {
     variables: {
+      status: appliedSelectedFilter
+        ? {
+            equals: appliedSelectedFilter,
+          }
+        : {
+            notEquals: "completed",
+          },
+      stageStatus: {},
+      query: appliedSearchQuery || undefined,
       page: 1,
       pageSize: 20,
+      fromDate: appliedFromDate || undefined,
+      toDate: appliedToDate || undefined,
+      filterByDate: appliedFilterByDate || undefined,
     },
     fetchPolicy: "cache-and-network",
+    skip: !appliedFromDate || !appliedToDate, // Wait until dates are initialized
+    notifyOnNetworkStatusChange: true, // Enable network status updates for refetching
   });
 
   const { data: userData } = useQuery(GET_CURRENT_USER_DATA, {
@@ -202,6 +278,83 @@ export default function DashboardScreen() {
     setSelectedFilter(filter);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
+
+  const handleFilterReset = () => {
+    const { fromDate: resetFrom, toDate: resetTo } = getLast30DaysRange();
+    // Reset temporary filters
+    setFromDate(resetFrom);
+    setToDate(resetTo);
+    setSearchQuery("");
+    setFilterByDate("processing_date");
+    setSelectedFilter(null);
+    
+    // Apply the reset immediately
+    setAppliedFromDate(resetFrom);
+    setAppliedToDate(resetTo);
+    setAppliedSearchQuery("");
+    setAppliedFilterByDate("processing_date");
+    setAppliedSelectedFilter(null);
+    
+    // Refetch with reset values
+    setTimeout(() => refetch(), 100);
+  };
+
+  const handleFilterApply = () => {
+    // Apply temporary filters to applied filters
+    setAppliedFromDate(fromDate);
+    setAppliedToDate(toDate);
+    setAppliedSearchQuery(searchQuery);
+    setAppliedFilterByDate(filterByDate);
+    setAppliedSelectedFilter(selectedFilter);
+    
+    // Refetch with new applied values
+    setTimeout(() => refetch(), 100);
+  };
+
+  const handleDeleteDocument = async (documentId: string, documentName: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    
+    Alert.alert(
+      "Delete Document",
+      `Are you sure you want to delete "${documentName}"? This action cannot be undone.`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const { data: deleteData } = await deleteDocument({
+                variables: {
+                  documentId,
+                  deleteFromS3: true,
+                },
+              });
+
+              if (deleteData?.deleteDocument?.ok) {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                Alert.alert("Success", "Document deleted successfully");
+                await refetch();
+              } else {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                Alert.alert(
+                  "Error",
+                  deleteData?.deleteDocument?.message || "Failed to delete document"
+                );
+              }
+            } catch (err: any) {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+              Alert.alert("Error", err.message || "Failed to delete document");
+            }
+          },
+        },
+      ]
+    );
+  };
+
 
   const filterDocuments = (docs: Document[], filter: string | null): Document[] => {
     if (!filter) return docs;
@@ -279,51 +432,67 @@ export default function DashboardScreen() {
     const displayDate = item.issueDate || item.createdAt;
 
     return (
-      <TouchableOpacity
+      <View
         style={[
           styles.invoiceItem,
           { backgroundColor: colors.background.card, borderColor: colors.border.DEFAULT },
         ]}
-        activeOpacity={0.6}
-        onPress={() => {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          handleDocumentPress(item);
-        }}
       >
-        <View style={styles.invoiceLeft}>
-          <View
-            style={[
-              styles.invoiceIconContainer,
-              { backgroundColor: statusColors.bg },
-            ]}
-          >
-            <FileText size={20} color={statusColors.text} />
+        <TouchableOpacity
+          style={styles.invoiceItemContent}
+          activeOpacity={0.6}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            handleDocumentPress(item);
+          }}
+        >
+          <View style={styles.invoiceLeft}>
+            <View
+              style={[
+                styles.invoiceIconContainer,
+                { backgroundColor: statusColors.bg },
+              ]}
+            >
+              <FileText size={20} color={statusColors.text} />
+            </View>
+            <View style={styles.invoiceInfo}>
+              <Text style={[styles.invoiceNumber, { color: colors.text.primary }]} numberOfLines={1}>
+                {item.documentName || "Untitled Invoice"}
+              </Text>
+              <Text
+                style={[styles.invoiceVendor, { color: colors.text.secondary }]}>
+                {vendorName}
+              </Text>
+            </View>
           </View>
-          <View style={styles.invoiceInfo}>
-            <Text style={[styles.invoiceNumber, { color: colors.text.primary }]} numberOfLines={1}>
-              {item.documentName || "Untitled Invoice"}
+          <View style={styles.invoiceRight}>
+            <Text style={[styles.invoiceDate, { color: colors.text.secondary }]}>
+              {formatDate(displayDate)}
             </Text>
-            <Text
-              style={[styles.invoiceVendor, { color: colors.text.secondary }]}>
-              {vendorName}
-            </Text>
+            <View style={[styles.statusBadge, { backgroundColor: statusColors.bg }]}>
+              <Text style={[styles.statusText, { color: statusColors.text }]}>
+                {item.workflowStatus || "Pending"}
+              </Text>
+            </View>
           </View>
-        </View>
-        <View style={styles.invoiceRight}>
-          <Text style={[styles.invoiceDate, { color: colors.text.secondary }]}>
-            {formatDate(displayDate)}
-          </Text>
-          <View style={[styles.statusBadge, { backgroundColor: statusColors.bg }]}>
-            <Text style={[styles.statusText, { color: statusColors.text }]}>
-              {item.workflowStatus || "Pending"}
-            </Text>
-          </View>
-        </View>
-      </TouchableOpacity>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.deleteButton, { borderLeftColor: colors.border.DEFAULT }]}
+          onPress={() => handleDeleteDocument(item.id, item.documentName || "Untitled Invoice")}
+          activeOpacity={0.7}
+        >
+          <Trash2 size={18} color={colors.status.rejected} />
+        </TouchableOpacity>
+      </View>
     );
   };
 
-  if (loading && !data) {
+  // Show full page loading only on initial load, not on refetch
+  // NetworkStatus values: 1=loading, 4=refetch, 3=fetchMore
+  const isInitialLoading = loading && networkStatus === 1 && !data;
+  const isRefetching = networkStatus === 4 || networkStatus === 3;
+
+  if (isInitialLoading) {
     return (
       <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
@@ -448,98 +617,32 @@ export default function DashboardScreen() {
             <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>
               Recent Invoices
             </Text>
+            <TouchableOpacity
+              style={[styles.filterButtonHeader, { backgroundColor: colors.background.card, borderColor: colors.border.DEFAULT }]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setShowFilterSheet(true);
+              }}
+              activeOpacity={0.7}
+            >
+              <Filter size={18} color={colors.text.primary} />
+              <Text style={[styles.filterButtonHeaderText, { color: colors.text.primary }]}>
+                Filters
+              </Text>
+              {(searchQuery || selectedFilter || (fromDate && toDate)) && (
+                <View style={[styles.filterBadge, { backgroundColor: colors.primary.DEFAULT }]} />
+              )}
+            </TouchableOpacity>
           </View>
 
-          {/* Filter Buttons */}
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false}
-            style={styles.filterContainer}
-            contentContainerStyle={styles.filterContent}
-          >
-            <TouchableOpacity
-              style={[
-                styles.filterButton,
-                selectedFilter === null && styles.filterButtonActive,
-                { 
-                  backgroundColor: selectedFilter === null 
-                    ? colors.primary.DEFAULT 
-                    : colors.background.card,
-                  borderColor: colors.border.DEFAULT 
-                }
-              ]}
-              onPress={() => handleFilterChange(null)}
-            >
-              <Text style={[
-                styles.filterButtonText,
-                { color: selectedFilter === null ? '#ffffff' : colors.text.primary }
-              ]}>
-                All
+          {isRefetching ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color={colors.primary.DEFAULT} />
+              <Text style={[styles.loadingText, { color: colors.text.secondary }]}>
+                Applying filters...
               </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.filterButton,
-                selectedFilter === 'in_progress' && styles.filterButtonActive,
-                { 
-                  backgroundColor: selectedFilter === 'in_progress'
-                    ? colors.primary.DEFAULT 
-                    : colors.background.card,
-                  borderColor: colors.border.DEFAULT 
-                }
-              ]}
-              onPress={() => handleFilterChange('in_progress')}
-            >
-              <Text style={[
-                styles.filterButtonText,
-                { color: selectedFilter === 'in_progress' ? '#ffffff' : colors.text.primary }
-              ]}>
-                In Progress
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.filterButton,
-                selectedFilter === 'completed' && styles.filterButtonActive,
-                { 
-                  backgroundColor: selectedFilter === 'completed'
-                    ? colors.primary.DEFAULT 
-                    : colors.background.card,
-                  borderColor: colors.border.DEFAULT 
-                }
-              ]}
-              onPress={() => handleFilterChange('completed')}
-            >
-              <Text style={[
-                styles.filterButtonText,
-                { color: selectedFilter === 'completed' ? '#ffffff' : colors.text.primary }
-              ]}>
-                Completed
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.filterButton,
-                selectedFilter === 'pending' && styles.filterButtonActive,
-                { 
-                  backgroundColor: selectedFilter === 'pending'
-                    ? colors.primary.DEFAULT 
-                    : colors.background.card,
-                  borderColor: colors.border.DEFAULT 
-                }
-              ]}
-              onPress={() => handleFilterChange('pending')}
-            >
-              <Text style={[
-                styles.filterButtonText,
-                { color: selectedFilter === 'pending' ? '#ffffff' : colors.text.primary }
-              ]}>
-                Pending
-              </Text>
-            </TouchableOpacity>
-          </ScrollView>
-
-          {documents.length === 0 ? (
+            </View>
+          ) : documents.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Ionicons
                 name="receipt-outline"
@@ -576,6 +679,24 @@ export default function DashboardScreen() {
         }
         userEmail={getUserProfile()?.email || ''}
         userProfileImage={getUserProfile()?.profile_image}
+      />
+
+      {/* Filter Bottom Sheet */}
+      <FilterBottomSheet
+        visible={showFilterSheet}
+        onClose={() => setShowFilterSheet(false)}
+        onApply={handleFilterApply}
+        onReset={handleFilterReset}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        fromDate={fromDate}
+        toDate={toDate}
+        onFromDateChange={setFromDate}
+        onToDateChange={setToDate}
+        filterByDate={filterByDate}
+        onFilterByDateChange={setFilterByDate}
+        selectedStatus={selectedFilter}
+        onStatusChange={setSelectedFilter}
       />
     </SafeAreaView>
   );
@@ -643,27 +764,6 @@ const getStyles = (colors: ReturnType<typeof getColors>) =>
       fontSize: 28,
       fontWeight: "700",
     },
-    filterContainer: {
-      marginBottom: 16,
-    },
-    filterContent: {
-      gap: 8,
-      paddingHorizontal: 20,
-    },
-    filterButton: {
-      paddingHorizontal: 16,
-      paddingVertical: 8,
-      borderRadius: 20,
-      borderWidth: 1,
-      marginRight: 8,
-    },
-    filterButtonActive: {
-      // Active state handled by backgroundColor
-    },
-    filterButtonText: {
-      fontSize: 14,
-      fontWeight: "600",
-    },
     themeButton: {
       width: 44,
       height: 44,
@@ -705,6 +805,28 @@ const getStyles = (colors: ReturnType<typeof getColors>) =>
       alignItems: "center",
       marginBottom: 16,
     },
+    filterButtonHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderRadius: 20,
+      borderWidth: 1,
+      position: "relative",
+    },
+    filterButtonHeaderText: {
+      fontSize: 14,
+      fontWeight: "600",
+    },
+    filterBadge: {
+      position: "absolute",
+      top: -2,
+      right: -2,
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+    },
     sectionTitle: {
       fontSize: 20,
       fontWeight: "700",
@@ -714,9 +836,7 @@ const getStyles = (colors: ReturnType<typeof getColors>) =>
     },
     invoiceItem: {
       flexDirection: "row",
-      justifyContent: "space-between",
       alignItems: "center",
-      padding: 18,
       borderRadius: 16,
       shadowColor: "#000",
       shadowOffset: { width: 0, height: 2 },
@@ -724,6 +844,21 @@ const getStyles = (colors: ReturnType<typeof getColors>) =>
       shadowRadius: 8,
       elevation: 3,
       borderWidth: 1,
+      marginBottom: 12,
+      overflow: "hidden",
+    },
+    invoiceItemContent: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      padding: 18,
+      flex: 1,
+    },
+    deleteButton: {
+      padding: 12,
+      justifyContent: "center",
+      alignItems: "center",
+      borderLeftWidth: 1,
     },
     invoiceLeft: {
       flexDirection: "row",
@@ -764,6 +899,16 @@ const getStyles = (colors: ReturnType<typeof getColors>) =>
     statusText: {
       fontSize: 11,
       fontWeight: "600",
+    },
+    loadingContainer: {
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: spacing.xxl,
+      gap: 12,
+    },
+    loadingText: {
+      fontSize: typography.sizes.sm,
+      fontFamily: typography.fontFamily.regular,
     },
     emptyContainer: {
       alignItems: "center",

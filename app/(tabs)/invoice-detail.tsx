@@ -1,4 +1,4 @@
-import { gql, useQuery } from "@apollo/client";
+import { gql, useMutation, useQuery } from "@apollo/client";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
+import { Trash2 } from "lucide-react-native";
 import {
   borderRadius,
   getColors,
@@ -28,6 +29,17 @@ import * as Haptics from "expo-haptics";
 const GET_EXTRACTED_DATA = gql`
   query GetExtractedData($invoiceId: String!) {
     getExractedData(invoiceId: $invoiceId)
+  }
+`;
+
+const DELETE_DOCUMENT = gql`
+  mutation DeleteDocument($documentId: String!, $deleteFromS3: Boolean!) {
+    deleteDocument(documentId: $documentId, deleteFromS3: $deleteFromS3) {
+      ok
+      deleted
+      error
+      message
+    }
   }
 `;
 
@@ -95,6 +107,8 @@ export default function InvoiceDetailScreen() {
     fetchPolicy: "network-only",
   });
 
+  const [deleteDocument, { loading: deleting }] = useMutation(DELETE_DOCUMENT);
+
   useEffect(() => {
     if (data?.getExractedData) {
       setExtractedData(data.getExractedData);
@@ -138,6 +152,64 @@ export default function InvoiceDetailScreen() {
     } catch {
       return dateString;
     }
+  };
+
+  const handleDeleteDocument = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    
+    const documentName = extractedData?.extracted_data?.invoice_number || 
+                         extractedData?.extracted_data?.vendor_name || 
+                         "this document";
+    
+    Alert.alert(
+      "Delete Document",
+      `Are you sure you want to delete "${documentName}"? This action cannot be undone.`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const docId = documentId || invoiceDataId;
+              if (!docId) {
+                Alert.alert("Error", "Document ID is not available");
+                return;
+              }
+
+              const { data: deleteData } = await deleteDocument({
+                variables: {
+                  documentId: docId,
+                  deleteFromS3: true,
+                },
+              });
+
+              if (deleteData?.deleteDocument?.ok) {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                Alert.alert("Success", "Document deleted successfully", [
+                  {
+                    text: "OK",
+                    onPress: () => router.back(),
+                  },
+                ]);
+              } else {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                Alert.alert(
+                  "Error",
+                  deleteData?.deleteDocument?.message || "Failed to delete document"
+                );
+              }
+            } catch (err: any) {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+              Alert.alert("Error", err.message || "Failed to delete document");
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleOpenFile = async (fileId?: string) => {
@@ -259,7 +331,18 @@ export default function InvoiceDetailScreen() {
           <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Invoice Details</Text>
-        <View style={styles.placeholder} />
+        <TouchableOpacity
+          style={styles.deleteButtonHeader}
+          onPress={handleDeleteDocument}
+          disabled={deleting}
+          activeOpacity={0.7}
+        >
+          {deleting ? (
+            <ActivityIndicator size="small" color={colors.status.rejected} />
+          ) : (
+            <Trash2 size={22} color={colors.status.rejected} />
+          )}
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -614,8 +697,11 @@ const getStyles = (colors: ReturnType<typeof getColors>) =>
       fontWeight: "700",
       color: colors.text.primary,
     },
-    placeholder: {
-      width: 40,
+    deleteButtonHeader: {
+      padding: spacing.xs,
+      justifyContent: "center",
+      alignItems: "center",
+      minWidth: 40,
     },
     card: {
       backgroundColor: colors.background.card,
