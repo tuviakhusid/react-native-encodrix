@@ -1,11 +1,18 @@
 import { gql, useQuery } from "@apollo/client";
 import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
+import {
+  CheckCircle2,
+  Clock,
+  FileText,
+  Moon,
+  Sun,
+} from "lucide-react-native";
 import { useState } from "react";
 import {
   ActivityIndicator,
   Image,
-  Modal,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -13,7 +20,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
+import ProfileBottomSheet from "../../components/ProfileBottomSheet";
 import {
   borderRadius,
   getColors,
@@ -95,10 +103,36 @@ interface Document {
   issueDate?: string;
 }
 
+function StatCard({
+  title,
+  value,
+  icon: Icon,
+  color,
+  bgColor,
+  textColor,
+}: {
+  title: string;
+  value: string;
+  icon: any;
+  color: string;
+  bgColor: string;
+  textColor: string;
+}) {
+  return (
+    <View style={[statCardStyles.statCard, { backgroundColor: bgColor }]}>
+      <View style={statCardStyles.statIconContainer}>
+        <Icon size={24} color={color} strokeWidth={2.5} />
+      </View>
+      <Text style={[statCardStyles.statValue, { color: textColor }]}>{value}</Text>
+      <Text style={[statCardStyles.statTitle, { color: textColor }]}>{title}</Text>
+    </View>
+  );
+}
+
 export default function DashboardScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedFilter, setSelectedFilter] = useState<string | null>(null);
   const { theme, toggleTheme } = useTheme();
   const colors = getColors(theme);
   const styles = getStyles(colors);
@@ -139,7 +173,7 @@ export default function DashboardScreen() {
     return userData?.getMyProfile || null;
   };
 
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [profileSheetVisible, setProfileSheetVisible] = useState(false);
 
   const totalDocuments = data?.documentsByStatus?.totalDocuments || 0;
   const inProgressCount = data?.documentsByStatus?.inProgressCount || 0;
@@ -157,6 +191,35 @@ export default function DashboardScreen() {
   const handleLogout = async () => {
     await authService.logout();
     router.replace("/login");
+  };
+
+  const handleThemeToggle = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    toggleTheme();
+  };
+
+  const handleFilterChange = (filter: string | null) => {
+    setSelectedFilter(filter);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const filterDocuments = (docs: Document[], filter: string | null): Document[] => {
+    if (!filter) return docs;
+    
+    return docs.filter((doc) => {
+      const status = doc.workflowStatus?.toLowerCase() || "pending";
+      
+      switch (filter) {
+        case "in_progress":
+          return status === "in_progress" || status === "inprogress";
+        case "completed":
+          return status === "completed";
+        case "pending":
+          return status === "pending";
+        default:
+          return true;
+      }
+    });
   };
 
   const getStatusColor = (status: string) => {
@@ -201,12 +264,14 @@ export default function DashboardScreen() {
           invoiceDataId: item.id,
           documentId: item.id,
           s3Url: item.s3Urls?.[0] || "",
+          fileFormat: item.fileFormat || "",
         },
       });
     }
   };
 
-  const documents = data?.documentsByStatus?.documents || [];
+  const allDocuments = data?.documentsByStatus?.documents || [];
+  const documents = filterDocuments(allDocuments, selectedFilter);
 
   const renderDocumentItem = ({ item }: { item: Document }) => {
     const statusColors = getStatusColor(item.workflowStatus || "pending");
@@ -215,51 +280,43 @@ export default function DashboardScreen() {
 
     return (
       <TouchableOpacity
-        style={[styles.documentCard, { borderLeftColor: statusColors.text }]}
-        activeOpacity={0.7}
-        onPress={() => handleDocumentPress(item)}
+        style={[
+          styles.invoiceItem,
+          { backgroundColor: colors.background.card, borderColor: colors.border.DEFAULT },
+        ]}
+        activeOpacity={0.6}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          handleDocumentPress(item);
+        }}
       >
-        <View style={styles.documentHeader}>
+        <View style={styles.invoiceLeft}>
           <View
             style={[
-              styles.documentIconContainer,
-              { backgroundColor: statusColors.bg, borderColor: statusColors.text },
+              styles.invoiceIconContainer,
+              { backgroundColor: statusColors.bg },
             ]}
           >
-            <Ionicons
-              name="document-text"
-              size={24}
-              color={statusColors.text}
-            />
+            <FileText size={20} color={statusColors.text} />
           </View>
-          <View style={styles.documentInfo}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Text style={styles.documentName} numberOfLines={1}>
-                {item.documentName || "Untitled Invoice"}
-              </Text>
-              <View
-                style={[styles.statusBadge, { backgroundColor: statusColors.bg }]}
-              >
-                <Text style={[styles.statusText, { color: statusColors.text }]}>
-                  {item.workflowStatus || "Pending"}
-                </Text>
-              </View>
-            </View>
-            <Text style={styles.documentType}>
-              {item.documentType || "Invoice"}
+          <View style={styles.invoiceInfo}>
+            <Text style={[styles.invoiceNumber, { color: colors.text.primary }]} numberOfLines={1}>
+              {item.documentName || "Untitled Invoice"}
             </Text>
-          </View>
-        </View>
-        <View style={styles.documentFooter}>
-          <View style={styles.footerItem}>
-            <Ionicons name="business" size={16} color={colors.text.secondary} />
-            <Text style={styles.footerText} numberOfLines={1}>
+            <Text
+              style={[styles.invoiceVendor, { color: colors.text.secondary }]}>
               {vendorName}
             </Text>
           </View>
-          <View style={styles.footerItem}>
-            <Ionicons name="calendar" size={16} color={colors.text.secondary} />
-            <Text style={styles.footerText}>{formatDate(displayDate)}</Text>
+        </View>
+        <View style={styles.invoiceRight}>
+          <Text style={[styles.invoiceDate, { color: colors.text.secondary }]}>
+            {formatDate(displayDate)}
+          </Text>
+          <View style={[styles.statusBadge, { backgroundColor: statusColors.bg }]}>
+            <Text style={[styles.statusText, { color: statusColors.text }]}>
+              {item.workflowStatus || "Pending"}
+            </Text>
           </View>
         </View>
       </TouchableOpacity>
@@ -297,566 +354,416 @@ export default function DashboardScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      {/* Sticky Header with Greeting */}
-      <View
-        style={[
-          styles.header,
-          {
-            paddingTop: insets.top + spacing.md,
-            backgroundColor: colors.primary.brandGradient[0],
-          },
-        ]}
-      >
-        <View style={styles.headerTop}>
-          <View style={styles.greetingSection}>
-            <TouchableOpacity
-              style={styles.avatarContainer}
-              onPress={() => setShowProfileMenu(true)}
-              activeOpacity={0.7}
-            >
-              {getUserProfile()?.profile_image ? (
-                <Image
-                  source={{ uri: getUserProfile().profile_image }}
-                  style={styles.avatarImage}
-                />
-              ) : (
-                <View style={styles.avatarPlaceholder}>
-                  <Text style={styles.avatarText}>
-                    {getUserName().charAt(0).toUpperCase()}
-                  </Text>
-                </View>
-              )}
-            </TouchableOpacity>
-            <View style={styles.greetingText}>
-              <Text style={[styles.greeting, { color: "#ffffff" }]}>
-                Hi {getUserName()},
-              </Text>
-              <Text style={[styles.greetingSubtitle, { color: "rgba(255,255,255,0.8)" }]}>
-                Stats For Your Invoice Documents
-              </Text>
-            </View>
-          </View>
-          <View style={styles.headerActions}>
-            <TouchableOpacity
-              style={[
-                styles.iconButton,
-                { backgroundColor: "rgba(255,255,255,0.2)" },
-              ]}
-              onPress={toggleTheme}
-              activeOpacity={0.7}
-            >
-              <Ionicons
-                name={theme === "dark" ? "sunny" : "moon"}
-                size={20}
-                color="#ffffff"
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background.DEFAULT }]}>
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingTop: 90 + insets.top },
-        ]}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
             tintColor={colors.primary.DEFAULT}
+            colors={[colors.primary.DEFAULT]}
           />
-        }
-      >
-        {/* Stats Cards - Total Invoices and Data Extraction */}
-        <View style={styles.statsContainer}>
-          <View style={[styles.statCard, styles.statCardBlue]}>
-            <View style={styles.statHeader}>
-              <Text style={[styles.statTitle, styles.statTitleBlue]}>
-                Total Invoice
-              </Text>
-              <View style={[styles.statArrowCircle, styles.statArrowCircleBlue]}>
-                <Ionicons
-                  name="arrow-up"
-                  size={12}
-                  color={colors.stats.blue.text}
-                />
-              </View>
-            </View>
-            <Text style={[styles.statValue, styles.statValueBlue]}>
-              {totalDocuments}
+        }>
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <Text style={[styles.greeting, { color: colors.text.secondary }]}>
+              {getGreeting()} 👋
             </Text>
-            <Text style={[styles.statSubtext, styles.statSubtextBlue]}>
-              Last Month
-            </Text>
-            <View style={styles.statAvatars}>
-              <View style={[styles.statAvatar, styles.statAvatar1]} />
-              <View style={[styles.statAvatar, styles.statAvatar2]} />
-              <View style={[styles.statAvatar, styles.statAvatar3]} />
-            </View>
-          </View>
-
-          <View style={[styles.statCard, styles.statCardYellow]}>
-            <View style={styles.statHeader}>
-              <Text style={[styles.statTitle, styles.statTitleYellow]}>
-                Data Extraction
-              </Text>
-              <View
-                style={[styles.statArrowCircle, styles.statArrowCircleYellow]}
-              >
-                <Ionicons
-                  name="arrow-up"
-                  size={12}
-                  color={colors.stats.yellow.text}
-                />
-              </View>
-            </View>
-            <Text style={[styles.statValue, styles.statValueYellow]}>
-              {dataExtractionCount}
-            </Text>
-            <Text style={[styles.statSubtext, styles.statSubtextYellow]}>
-              In Progress
-            </Text>
-            <View style={styles.statChart}>
-              <Ionicons
-                name="server"
-                size={20}
-                color={colors.stats.yellow.text}
-              />
-            </View>
-          </View>
-        </View>
-
-        {/* Invoices Section */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Documents</Text>
-          <Text style={styles.sectionSubtitle}>
-            Track and manage documents currently being processed.
-          </Text>
-        </View>
-
-        {documents.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Ionicons
-              name="receipt-outline"
-              size={64}
-              color={colors.text.muted}
-            />
-            <Text style={styles.emptyText}>No invoices found</Text>
-            <Text style={styles.emptySubtext}>
-              Upload your first invoice to start data extraction
+            <Text style={[styles.headerTitle, { color: colors.text.primary }]}>
+              {getUserName()}
             </Text>
           </View>
-        ) : (
-          <View style={styles.documentsList}>
-            {documents.map((item: Document) => (
-              <View key={item.id}>{renderDocumentItem({ item })}</View>
-            ))}
-          </View>
-        )}
-      </ScrollView>
 
-      {/* Profile Menu Modal */}
-      <Modal
-        visible={showProfileMenu}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowProfileMenu(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowProfileMenu(false)}
-        >
-          <View style={styles.profileMenu}>
-            <View style={styles.profileMenuHeader}>
+          <View style={styles.headerRight}>
+            <TouchableOpacity
+              style={[
+                styles.themeButton,
+                { backgroundColor: colors.background.card, borderColor: colors.border.DEFAULT },
+              ]}
+              onPress={handleThemeToggle}
+              activeOpacity={0.6}>
+              {theme === 'dark' ? (
+                <Sun size={20} color={colors.primary.DEFAULT} strokeWidth={2.5} />
+              ) : (
+                <Moon size={20} color={colors.primary.DEFAULT} strokeWidth={2.5} />
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.profileButton,
+                { backgroundColor: colors.primary.DEFAULT },
+              ]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setProfileSheetVisible(true);
+              }}
+              activeOpacity={0.6}>
               {getUserProfile()?.profile_image ? (
                 <Image
                   source={{ uri: getUserProfile().profile_image }}
-                  style={styles.profileMenuAvatar}
+                  style={styles.profileImage}
                 />
               ) : (
-                <View style={styles.profileMenuAvatarPlaceholder}>
-                  <Text style={styles.profileMenuAvatarText}>
-                    {getUserName().charAt(0).toUpperCase()}
-                  </Text>
-                </View>
+                <Text style={styles.profileInitials}>
+                  {getUserName().charAt(0).toUpperCase()}
+                </Text>
               )}
-              <View style={styles.profileMenuInfo}>
-                <Text style={styles.profileMenuName}>
-                  {getUserProfile()?.first_name && getUserProfile()?.last_name
-                    ? `${getUserProfile().first_name} ${
-                        getUserProfile().last_name
-                      }`
-                    : getUserName()}
-                </Text>
-                <Text style={styles.profileMenuEmail}>
-                  {getUserProfile()?.email || ""}
-                </Text>
-              </View>
-            </View>
-            <TouchableOpacity
-              style={styles.profileMenuOption}
-              onPress={() => {
-                setShowProfileMenu(false);
-                // Navigate to profile settings if needed
-              }}
-            >
-              <Ionicons
-                name="person-outline"
-                size={20}
-                color={colors.text.primary}
-              />
-              <Text style={styles.profileMenuOptionText}>Profile</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.profileMenuOption}
-              onPress={() => {
-                setShowProfileMenu(false);
-                // Navigate to settings if needed
-              }}
-            >
-              <Ionicons
-                name="settings-outline"
-                size={20}
-                color={colors.text.primary}
-              />
-              <Text style={styles.profileMenuOptionText}>Settings</Text>
-            </TouchableOpacity>
-            <View style={styles.profileMenuDivider} />
-            <TouchableOpacity
-              style={[styles.profileMenuOption, styles.profileMenuOptionDanger]}
-              onPress={async () => {
-                setShowProfileMenu(false);
-                await handleLogout();
-              }}
-            >
-              <Ionicons
-                name="log-out-outline"
-                size={20}
-                color={colors.status.rejected}
-              />
-              <Text
-                style={[
-                  styles.profileMenuOptionText,
-                  styles.profileMenuOptionTextDanger,
-                ]}
-              >
-                Logout
-              </Text>
             </TouchableOpacity>
           </View>
-        </TouchableOpacity>
-      </Modal>
-    </View>
+        </View>
+
+        <View style={styles.statsContainer}>
+          <StatCard
+            title="Total Invoices"
+            value={totalDocuments.toString()}
+            icon={FileText}
+            color={colors.primary.DEFAULT}
+            bgColor={colors.stats.blue.bg}
+            textColor={colors.stats.blue.text}
+          />
+          <StatCard
+            title="Extracting"
+            value={dataExtractionCount.toString()}
+            icon={Clock}
+            color={colors.stats.yellow.text}
+            bgColor={colors.stats.yellow.bg}
+            textColor={colors.stats.yellow.text}
+          />
+          <StatCard
+            title="Completed"
+            value={completedCount.toString()}
+            icon={CheckCircle2}
+            color={colors.stats.green.text}
+            bgColor={colors.stats.green.bg}
+            textColor={colors.stats.green.text}
+          />
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>
+              Recent Invoices
+            </Text>
+          </View>
+
+          {/* Filter Buttons */}
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            style={styles.filterContainer}
+            contentContainerStyle={styles.filterContent}
+          >
+            <TouchableOpacity
+              style={[
+                styles.filterButton,
+                selectedFilter === null && styles.filterButtonActive,
+                { 
+                  backgroundColor: selectedFilter === null 
+                    ? colors.primary.DEFAULT 
+                    : colors.background.card,
+                  borderColor: colors.border.DEFAULT 
+                }
+              ]}
+              onPress={() => handleFilterChange(null)}
+            >
+              <Text style={[
+                styles.filterButtonText,
+                { color: selectedFilter === null ? '#ffffff' : colors.text.primary }
+              ]}>
+                All
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.filterButton,
+                selectedFilter === 'in_progress' && styles.filterButtonActive,
+                { 
+                  backgroundColor: selectedFilter === 'in_progress'
+                    ? colors.primary.DEFAULT 
+                    : colors.background.card,
+                  borderColor: colors.border.DEFAULT 
+                }
+              ]}
+              onPress={() => handleFilterChange('in_progress')}
+            >
+              <Text style={[
+                styles.filterButtonText,
+                { color: selectedFilter === 'in_progress' ? '#ffffff' : colors.text.primary }
+              ]}>
+                In Progress
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.filterButton,
+                selectedFilter === 'completed' && styles.filterButtonActive,
+                { 
+                  backgroundColor: selectedFilter === 'completed'
+                    ? colors.primary.DEFAULT 
+                    : colors.background.card,
+                  borderColor: colors.border.DEFAULT 
+                }
+              ]}
+              onPress={() => handleFilterChange('completed')}
+            >
+              <Text style={[
+                styles.filterButtonText,
+                { color: selectedFilter === 'completed' ? '#ffffff' : colors.text.primary }
+              ]}>
+                Completed
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.filterButton,
+                selectedFilter === 'pending' && styles.filterButtonActive,
+                { 
+                  backgroundColor: selectedFilter === 'pending'
+                    ? colors.primary.DEFAULT 
+                    : colors.background.card,
+                  borderColor: colors.border.DEFAULT 
+                }
+              ]}
+              onPress={() => handleFilterChange('pending')}
+            >
+              <Text style={[
+                styles.filterButtonText,
+                { color: selectedFilter === 'pending' ? '#ffffff' : colors.text.primary }
+              ]}>
+                Pending
+              </Text>
+            </TouchableOpacity>
+          </ScrollView>
+
+          {documents.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons
+                name="receipt-outline"
+                size={64}
+                color={colors.text.muted}
+              />
+              <Text style={styles.emptyText}>No invoices found</Text>
+              <Text style={styles.emptySubtext}>
+                Upload your first invoice to start data extraction
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.invoiceList}>
+              {documents.map((item: Document) => (
+                <View key={item.id}>{renderDocumentItem({ item })}</View>
+              ))}
+            </View>
+          )}
+        </View>
+      </ScrollView>
+
+      <ProfileBottomSheet
+        visible={profileSheetVisible}
+        onClose={() => setProfileSheetVisible(false)}
+        onSettings={() => {
+          setProfileSheetVisible(false);
+          console.log('Settings clicked');
+        }}
+        onLogout={handleLogout}
+        userName={
+          getUserProfile()?.first_name && getUserProfile()?.last_name
+            ? `${getUserProfile().first_name} ${getUserProfile().last_name}`
+            : getUserName()
+        }
+        userEmail={getUserProfile()?.email || ''}
+        userProfileImage={getUserProfile()?.profile_image}
+      />
+    </SafeAreaView>
   );
 }
+
+const statCardStyles = StyleSheet.create({
+  statCard: {
+    flex: 1,
+    padding: 18,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 130,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  statIconContainer: {
+    marginBottom: 8,
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+  statTitle: {
+    fontSize: 11,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+});
 
 const getStyles = (colors: ReturnType<typeof getColors>) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.DEFAULT,
     },
     scrollView: {
       flex: 1,
     },
-    scrollContent: {
-      paddingBottom: 100, // Extra padding for bottom navigation
-    },
-    centerContainer: {
-      flex: 1,
-      justifyContent: "center",
-      alignItems: "center",
-      padding: spacing.lg,
-    },
     header: {
-      backgroundColor: colors.background.light,
-      paddingBottom: spacing.md,
-      paddingHorizontal: spacing.lg,
-      ...shadows.sm,
-      position: "absolute",
-      top: 0,
-      left: 0,
-      right: 0,
-      zIndex: 1000,
-    },
-    headerTop: {
       flexDirection: "row",
       justifyContent: "space-between",
-      alignItems: "center",
+      alignItems: "flex-start",
+      paddingHorizontal: 20,
+      paddingTop: 20,
+      paddingBottom: 24,
+      gap: 12,
     },
-    greetingSection: {
+    headerLeft: {
+      flex: 1,
+    },
+    headerRight: {
       flexDirection: "row",
+      gap: 12,
       alignItems: "center",
-      flex: 1,
-    },
-    avatarContainer: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
-      marginRight: spacing.md,
-      overflow: "hidden",
-    },
-    avatarImage: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
-    },
-    avatarPlaceholder: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
-      backgroundColor: colors.primary.DEFAULT,
-      justifyContent: "center",
-      alignItems: "center",
-    },
-    avatarText: {
-      color: colors.background.light,
-      fontSize: typography.sizes.lg,
-      fontWeight: typography.weights.bold,
-      fontFamily: typography.fontFamily.bold,
-    },
-    greetingText: {
-      flex: 1,
     },
     greeting: {
-      fontSize: typography.sizes.md,
-      fontWeight: typography.weights.medium,
-      fontFamily: typography.fontFamily.medium,
-      color: colors.text.primary,
-      marginBottom: spacing.xs / 2,
+      fontSize: 14,
+      marginBottom: 4,
     },
-    greetingSubtitle: {
-      fontSize: typography.sizes.xs,
-      fontFamily: typography.fontFamily.regular,
-      color: colors.text.secondary,
+    headerTitle: {
+      fontSize: 28,
+      fontWeight: "700",
     },
-    headerActions: {
-      flexDirection: "row",
-      gap: spacing.sm,
+    filterContainer: {
+      marginBottom: 16,
     },
-    iconButton: {
-      width: 40,
-      height: 40,
+    filterContent: {
+      gap: 8,
+      paddingHorizontal: 20,
+    },
+    filterButton: {
+      paddingHorizontal: 16,
+      paddingVertical: 8,
       borderRadius: 20,
-      backgroundColor: colors.background.gray,
-      justifyContent: "center",
+      borderWidth: 1,
+      marginRight: 8,
+    },
+    filterButtonActive: {
+      // Active state handled by backgroundColor
+    },
+    filterButtonText: {
+      fontSize: 14,
+      fontWeight: "600",
+    },
+    themeButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 12,
       alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1,
+    },
+    profileButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 12,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    profileImage: {
+      width: 44,
+      height: 44,
+      borderRadius: 12,
+    },
+    profileInitials: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: "#ffffff",
     },
     statsContainer: {
       flexDirection: "row",
-      paddingHorizontal: spacing.lg,
-      paddingTop: spacing.md,
-      paddingBottom: spacing.lg,
-      gap: spacing.md,
-      justifyContent: "space-between",
+      paddingHorizontal: 20,
+      gap: 12,
+      marginBottom: 32,
     },
-    statCard: {
-      flex: 1,
-      minWidth: 0,
-      maxWidth: "48%",
-      backgroundColor: colors.background.card,
-      borderRadius: borderRadius.md,
-      padding: spacing.md,
-      ...shadows.sm,
-      position: "relative",
-      minHeight: 140,
-      borderWidth: 1,
-      borderColor: colors.border.light,
-    },
-    statCardBlue: {
-      backgroundColor: colors.stats.blue.bg,
-      borderColor: colors.stats.blue.text,
-      borderWidth: 1.5,
-    },
-    statCardYellow: {
-      backgroundColor: colors.stats.yellow.bg,
-      borderColor: colors.stats.yellow.text,
-      borderWidth: 1.5,
-    },
-    statHeader: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "flex-start",
-      marginBottom: spacing.sm,
-    },
-    statTitle: {
-      fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.medium,
-      fontFamily: typography.fontFamily.medium,
-    },
-    statTitleBlue: {
-      color: colors.stats.blue.text,
-    },
-    statTitleYellow: {
-      color: colors.stats.yellow.text,
-    },
-    statArrowCircle: {
-      width: 24,
-      height: 24,
-      borderRadius: 12,
-      backgroundColor: colors.background.gray,
-      justifyContent: "center",
-      alignItems: "center",
-    },
-    statArrowCircleBlue: {
-      backgroundColor: colors.stats.blue.bg,
-    },
-    statArrowCircleYellow: {
-      backgroundColor: colors.stats.yellow.bg,
-    },
-    statValue: {
-      fontSize: typography.sizes.xxxl,
-      fontWeight: typography.weights.bold,
-      fontFamily: typography.fontFamily.bold,
-      marginBottom: spacing.xs,
-    },
-    statValueBlue: {
-      color: colors.stats.blue.text,
-    },
-    statValueYellow: {
-      color: colors.stats.yellow.text,
-    },
-    statSubtext: {
-      fontSize: typography.sizes.xs,
-      fontFamily: typography.fontFamily.regular,
-    },
-    statSubtextBlue: {
-      color: colors.stats.blue.text,
-      opacity: 0.8,
-    },
-    statSubtextYellow: {
-      color: colors.stats.yellow.text,
-      opacity: 0.8,
-    },
-    statAvatars: {
-      position: "absolute",
-      bottom: spacing.md,
-      right: spacing.md,
-      flexDirection: "row",
-    },
-    statAvatar: {
-      width: 20,
-      height: 20,
-      borderRadius: 10,
-      backgroundColor: colors.background.light,
-      borderWidth: 2,
-      borderColor: colors.border.light,
-      marginLeft: -6,
-    },
-    statAvatar1: {
-      zIndex: 3,
-    },
-    statAvatar2: {
-      zIndex: 2,
-    },
-    statAvatar3: {
-      zIndex: 1,
-    },
-    statChart: {
-      position: "absolute",
-      bottom: spacing.md,
-      right: spacing.md,
+    section: {
+      paddingHorizontal: 20,
+      marginBottom: 24,
     },
     sectionHeader: {
-      paddingHorizontal: spacing.lg,
-      paddingTop: spacing.sm,
-      paddingBottom: spacing.md,
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 16,
     },
     sectionTitle: {
-      fontSize: typography.sizes.xl,
-      fontWeight: typography.weights.bold,
-      fontFamily: typography.fontFamily.bold,
-      color: colors.text.primary,
-      marginBottom: spacing.xs,
+      fontSize: 20,
+      fontWeight: "700",
     },
-    sectionSubtitle: {
-      fontSize: typography.sizes.sm,
-      fontFamily: typography.fontFamily.regular,
-      color: colors.text.secondary,
-      lineHeight: 20,
+    invoiceList: {
+      gap: 12,
     },
-    documentsList: {
-      paddingHorizontal: spacing.lg,
-      paddingBottom: spacing.xl,
-    },
-    documentCard: {
-      backgroundColor: colors.background.light,
-      borderRadius: borderRadius.md,
-      padding: spacing.md,
-      marginBottom: spacing.md,
-      ...shadows.sm,
-      borderWidth: 1,
-      borderColor: colors.border.light,
-      borderLeftWidth: 4,
-      borderLeftColor: colors.primary.DEFAULT,
-    },
-    documentHeader: {
+    invoiceItem: {
       flexDirection: "row",
       justifyContent: "space-between",
-      alignItems: "flex-start",
-      marginBottom: spacing.md,
-    },
-    documentIconContainer: {
-      width: 36,
-      height: 36,
-      borderRadius: 8,
-      backgroundColor: colors.stats.blue.bg,
-      justifyContent: "center",
       alignItems: "center",
-      marginRight: spacing.sm,
+      padding: 18,
+      borderRadius: 16,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
+      elevation: 3,
       borderWidth: 1,
-      borderColor: colors.stats.blue.text,
     },
-    documentInfo: {
+    invoiceLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
       flex: 1,
-      marginRight: spacing.sm,
-      gap: 2,
     },
-    documentName: {
-      fontSize: typography.sizes.md,
-      fontWeight: typography.weights.bold,
-      fontFamily: typography.fontFamily.bold,
-      color: colors.text.primary,
+    invoiceIconContainer: {
+      width: 48,
+      height: 48,
+      borderRadius: 14,
+      alignItems: "center",
+      justifyContent: "center",
     },
-    documentType: {
-      fontSize: typography.sizes.xs,
-      fontFamily: typography.fontFamily.medium,
-      color: colors.text.secondary,
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
+    invoiceInfo: {
+      flex: 1,
+    },
+    invoiceNumber: {
+      fontSize: 15,
+      fontWeight: "600",
+      marginBottom: 4,
+    },
+    invoiceVendor: {
+      fontSize: 13,
+    },
+    invoiceRight: {
+      alignItems: "flex-end",
+    },
+    invoiceDate: {
+      fontSize: 13,
+      marginBottom: 6,
     },
     statusBadge: {
-      paddingHorizontal: spacing.sm,
-      paddingVertical: spacing.xs / 2,
-      borderRadius: borderRadius.sm,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 8,
     },
     statusText: {
-      fontSize: typography.sizes.xs,
-      fontWeight: typography.weights.medium,
-      fontFamily: typography.fontFamily.medium,
-      textTransform: "capitalize",
-    },
-    documentFooter: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      marginTop: spacing.sm,
-      paddingTop: spacing.sm,
-      borderTopWidth: 1,
-      borderTopColor: colors.border.light,
-    },
-    footerItem: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: spacing.xs,
-    },
-    footerText: {
-      fontSize: typography.sizes.xs,
-      fontFamily: typography.fontFamily.regular,
-      color: colors.text.secondary,
+      fontSize: 11,
+      fontWeight: "600",
     },
     emptyContainer: {
       alignItems: "center",
@@ -875,6 +782,12 @@ const getStyles = (colors: ReturnType<typeof getColors>) =>
       fontFamily: typography.fontFamily.regular,
       color: colors.text.secondary,
       marginTop: spacing.xs,
+    },
+    centerContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      padding: spacing.lg,
     },
     errorText: {
       fontSize: typography.sizes.lg,
@@ -903,89 +816,6 @@ const getStyles = (colors: ReturnType<typeof getColors>) =>
       fontSize: typography.sizes.md,
       fontWeight: typography.weights.semibold,
       fontFamily: typography.fontFamily.semibold,
-    },
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: "rgba(0, 0, 0, 0.5)",
-      justifyContent: "flex-end",
-    },
-    profileMenu: {
-      backgroundColor: colors.background.light,
-      borderTopLeftRadius: borderRadius.lg,
-      borderTopRightRadius: borderRadius.lg,
-      padding: spacing.lg,
-      paddingBottom: spacing.xl,
-    },
-    profileMenuHeader: {
-      flexDirection: "row",
-      alignItems: "center",
-      marginBottom: spacing.lg,
-      paddingBottom: spacing.lg,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border.DEFAULT,
-    },
-    profileMenuAvatar: {
-      width: 56,
-      height: 56,
-      borderRadius: 28,
-      marginRight: spacing.md,
-    },
-    profileMenuAvatarPlaceholder: {
-      width: 56,
-      height: 56,
-      borderRadius: 28,
-      backgroundColor: colors.primary.DEFAULT,
-      justifyContent: "center",
-      alignItems: "center",
-      marginRight: spacing.md,
-    },
-    profileMenuAvatarText: {
-      color: colors.background.light,
-      fontSize: typography.sizes.xl,
-      fontWeight: typography.weights.bold,
-      fontFamily: typography.fontFamily.bold,
-    },
-    profileMenuInfo: {
-      flex: 1,
-    },
-    profileMenuName: {
-      fontSize: typography.sizes.lg,
-      fontWeight: typography.weights.bold,
-      fontFamily: typography.fontFamily.bold,
-      color: colors.text.primary,
-      marginBottom: spacing.xs,
-    },
-    profileMenuEmail: {
-      fontSize: typography.sizes.sm,
-      fontFamily: typography.fontFamily.regular,
-      color: colors.text.secondary,
-    },
-    profileMenuOption: {
-      flexDirection: "row",
-      alignItems: "center",
-      paddingVertical: spacing.md,
-      gap: spacing.md,
-    },
-    profileMenuOptionDanger: {
-      marginTop: spacing.xs,
-    },
-    profileMenuOptionText: {
-      fontSize: typography.sizes.md,
-      fontFamily: typography.fontFamily.regular,
-      color: colors.text.primary,
-    },
-    profileMenuOptionTextDanger: {
-      color: colors.status.rejected,
-    },
-    // modalOverlay: {
-    //   flex: 1,
-    //   backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    //   justifyContent: 'flex-end',
-    // },
-    profileMenuDivider: {
-      height: 1,
-      backgroundColor: colors.border.DEFAULT,
-      marginVertical: spacing.sm,
     },
   });
 

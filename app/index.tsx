@@ -1,14 +1,15 @@
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Animated, Dimensions, StyleSheet, Text, View } from "react-native";
-import { colors, typography } from "../src/constants/theme";
+import { getColors, typography } from "../src/constants/theme";
+import { useTheme } from "../src/context/theme-context";
 import authService from "../src/lib/services/auth.service";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const { width, height } = Dimensions.get("window");
 
-const SpinnerAnimation = () => {
+const SpinnerAnimation = ({ color, borderColor }: { color: string; borderColor: string }) => {
   const [rotation] = useState(new Animated.Value(0));
 
   useEffect(() => {
@@ -28,13 +29,15 @@ const SpinnerAnimation = () => {
 
   return (
     <Animated.View style={{ transform: [{ rotate: spin }] }}>
-      <View style={styles.spinner} />
+      <View style={[styles.spinner, { borderColor: borderColor, borderTopColor: color }]} />
     </Animated.View>
   );
 };
 
 export default function Index() {
   const router = useRouter();
+  const { theme } = useTheme();
+  const colors = getColors(theme);
   const [loading, setLoading] = useState(true);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [scaleAnim] = useState(new Animated.Value(0.8));
@@ -110,11 +113,8 @@ export default function Index() {
   }, [router]);
 
   return (
-    <LinearGradient
-      colors={colors.primary.splashGradient as [string, string, string]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.container}
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background.DEFAULT }]}
     >
       {/* Animated Background Elements */}
       {/* <Animated.View
@@ -128,25 +128,6 @@ export default function Index() {
           },
         ]}
       /> */}
-      <Animated.View
-        style={[
-          styles.backgroundCircle2,
-          {
-            opacity: fadeAnim.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0, 0.1],
-            }),
-            transform: [
-              {
-                scale: scaleAnim.interpolate({
-                  inputRange: [0.8, 1],
-                  outputRange: [0.8, 1.2],
-                }),
-              },
-            ],
-          },
-        ]}
-      />
 
       {/* Main Content */}
       <Animated.View
@@ -174,14 +155,14 @@ export default function Index() {
             },
           ]}
         >
-          <View style={styles.logoIcon}>
+          <View style={[styles.logoIcon, { backgroundColor: colors.stats.blue.bg, borderColor: colors.border.DEFAULT }]}>
             <Ionicons
               name="document-text"
               size={56}
-              color={colors.primary.light}
+              color={colors.primary.DEFAULT}
             />
           </View>
-          <Text style={styles.brandName}>Encodrix</Text>
+          <Text style={[styles.brandName, { color: colors.text.primary }]}>Encodrix</Text>
         </Animated.View>
 
         {/* Tagline */}
@@ -190,6 +171,8 @@ export default function Index() {
             styles.taglineContainer,
             {
               opacity: fadeAnim,
+              backgroundColor: colors.stats.blue.bg,
+              borderColor: colors.border.DEFAULT,
               transform: [
                 {
                   translateY: fadeAnim.interpolate({
@@ -201,8 +184,8 @@ export default function Index() {
             },
           ]}
         >
-          <View style={styles.pulseDot} />
-          <Text style={styles.tagline}>AI-Powered Document Management</Text>
+          <View style={[styles.pulseDot, { backgroundColor: colors.primary.DEFAULT }]} />
+          <Text style={[styles.tagline, { color: colors.stats.blue.text }]}>AI-Powered Document Management</Text>
         </Animated.View>
 
         {/* Main Message */}
@@ -214,9 +197,9 @@ export default function Index() {
             },
           ]}
         >
-          <Text style={styles.message}>
+          <Text style={[styles.message, { color: colors.text.primary }]}>
             Transforming documents into{"\n"}
-            <Text style={styles.highlightText}>intelligent insights</Text>
+            <Text style={[styles.highlightText, { color: colors.primary.DEFAULT }]}>intelligent insights</Text>
           </Text>
         </Animated.View>
 
@@ -229,10 +212,13 @@ export default function Index() {
             },
           ]}
         >
-          <SpinnerAnimation />
+          <SpinnerAnimation 
+            color={colors.primary.DEFAULT} 
+            borderColor={colors.border.DEFAULT} 
+          />
         </Animated.View>
       </Animated.View>
-    </LinearGradient>
+    </SafeAreaView>
   );
 }
 
@@ -242,25 +228,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     position: "relative",
-    overflow: "hidden",
-  },
-  backgroundCircle1: {
-    position: "absolute",
-    width: width * 1.5,
-    height: width * 1.5,
-    borderRadius: width * 0.75,
-    backgroundColor: colors.primary.light,
-    top: -width * 0.3,
-    right: -width * 0.3,
-  },
-  backgroundCircle2: {
-    position: "absolute",
-    width: width * 1.2,
-    height: width * 1.2,
-    borderRadius: width * 0.6,
-    backgroundColor: colors.primary.DEFAULT,
-    bottom: -width * 0.2,
-    left: -width * 0.2,
   },
   content: {
     alignItems: "center",
@@ -276,48 +243,32 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 25,
-    backgroundColor: colors.primary.light + "33",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 16,
-    borderWidth: 2,
-    borderColor: colors.primary.light + "4D",
+    borderWidth: 1,
   },
   brandName: {
     fontSize: 42,
     fontWeight: "700",
-    color: colors.background.light,
     letterSpacing: 1.5,
-    textShadowColor: "rgba(0, 0, 0, 0.3)",
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
-    // Note: brandName does NOT use Manrope - uses default system font
   },
   taglineContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 25,
     marginBottom: 32,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.2)",
-    backdropFilter: "blur(10px)",
   },
   pulseDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: colors.primary.light,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     marginRight: 10,
-    shadowColor: colors.primary.light,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 8,
   },
   tagline: {
-    color: colors.background.light,
     fontSize: 15,
     fontWeight: "500",
     fontFamily: typography.fontFamily.medium,
@@ -331,16 +282,11 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "700",
     fontFamily: typography.fontFamily.bold,
-    color: colors.background.light,
     textAlign: "center",
     lineHeight: 28,
     letterSpacing: 0.3,
-    textShadowColor: "rgba(0, 0, 0, 0.3)",
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
   },
   highlightText: {
-    color: colors.primary.light,
     fontWeight: "600",
     fontFamily: typography.fontFamily.semibold,
   },
@@ -352,7 +298,5 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 24,
     borderWidth: 4,
-    borderColor: colors.primary.light + "4D",
-    borderTopColor: colors.primary.light,
   },
 });

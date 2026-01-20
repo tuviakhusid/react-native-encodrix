@@ -5,13 +5,15 @@ import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { WebView } from "react-native-webview";
 import {
   borderRadius,
   getColors,
@@ -21,6 +23,7 @@ import {
 } from "../../src/constants/theme";
 import { useTheme } from "../../src/context/theme-context";
 import invoiceService from "../../src/lib/services/invoice.service";
+import * as Haptics from "expo-haptics";
 
 const GET_EXTRACTED_DATA = gql`
   query GetExtractedData($invoiceId: String!) {
@@ -66,17 +69,21 @@ interface ExtractedData {
 export default function InvoiceDetailScreen() {
   const params = useLocalSearchParams();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const colors = getColors(theme);
   const styles = getStyles(colors);
   const invoiceDataId = params.invoiceDataId as string;
   const documentId = params.documentId as string;
   const s3Url = params.s3Url as string;
+  const fileFormat = params.fileFormat as string;
   const [extractedData, setExtractedData] = useState<ExtractedData | null>(
     null
   );
   const [loading, setLoading] = useState(true);
+  const [showDocumentPreview, setShowDocumentPreview] = useState(false);
+  const [documentUrl, setDocumentUrl] = useState<string | null>(null);
+  const [isImage, setIsImage] = useState(false);
+  const [loadingDocument, setLoadingDocument] = useState(false);
 
   const {
     data,
@@ -96,6 +103,14 @@ export default function InvoiceDetailScreen() {
       setLoading(false);
     }
   }, [data, error]);
+
+  // Reset preview state when invoice changes
+  useEffect(() => {
+    setShowDocumentPreview(false);
+    setDocumentUrl(null);
+    setIsImage(false);
+    setLoadingDocument(false);
+  }, [invoiceDataId, documentId]);
 
   const formatCurrency = (value: string | number | undefined): string => {
     if (!value) return "N/A";
@@ -126,7 +141,6 @@ export default function InvoiceDetailScreen() {
   };
 
   const handleOpenFile = async (fileId?: string) => {
-    // Use documentId or invoiceDataId as file_id for the new v2 endpoint
     const file_id = fileId || documentId || invoiceDataId;
 
     if (!file_id) {
@@ -134,13 +148,69 @@ export default function InvoiceDetailScreen() {
       return;
     }
 
+    // If preview is already showing, toggle it off
+    if (showDocumentPreview) {
+      setShowDocumentPreview(false);
+      return;
+    }
+
     try {
-      // Use invoice service to preview document with streaming endpoint
-      // This handles authentication and proper URL construction using file_id
-      await invoiceService.previewDocument(file_id);
+      setLoadingDocument(true);
+      // Get the streaming URL
+      const url = await invoiceService.getStreamingUrl(file_id);
+      if (!url) {
+        Alert.alert("Error", "Unable to generate file URL");
+        setLoadingDocument(false);
+        return;
+      }
+
+      // Determine file type based on fileFormat parameter or URL extension
+      const formatLower = (fileFormat || '').toLowerCase();
+      const urlLower = url.toLowerCase();
+      
+      // Check if it's an image
+      const isImageFile = formatLower.includes('image') || 
+                         formatLower.match(/^(jpg|jpeg|png|gif|webp|bmp)$/) ||
+                         urlLower.match(/\.(jpg|jpeg|png|gif|webp|bmp)$/) ||
+                         urlLower.includes('image/');
+      
+      // Check if it's a PDF
+      const isPdfFile = formatLower === 'pdf' || 
+                       formatLower.includes('pdf') ||
+                       urlLower.match(/\.pdf$/i) ||
+                       urlLower.includes('application/pdf');
+      
+      // Check if it's a Word document
+      const isWordFile = formatLower.match(/^(doc|docx)$/) ||
+                        formatLower.includes('word') ||
+                        formatLower.includes('msword') ||
+                        urlLower.match(/\.(doc|docx)$/i) ||
+                        urlLower.includes('application/msword') ||
+                        urlLower.includes('application/vnd.openxmlformats-officedocument.wordprocessingml');
+      
+      setIsImage(!!isImageFile);
+      
+      // For PDFs, use Google Docs Viewer to prevent download and enable inline viewing
+      // WebView on React Native often triggers downloads for PDFs due to Content-Disposition headers
+      if (isPdfFile && !isImageFile && !isWordFile) {
+        // Use Google Docs Viewer for PDFs to ensure inline display
+        const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
+        setDocumentUrl(viewerUrl);
+      } else if (isWordFile && !isImageFile && !isPdfFile) {
+        // Use Microsoft Office Online viewer for Word documents
+        const viewerUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`;
+        setDocumentUrl(viewerUrl);
+      } else {
+        // For images, use the direct URL
+        setDocumentUrl(url);
+      }
+      
+      setShowDocumentPreview(true);
+      setLoadingDocument(false);
     } catch (error) {
       console.error("Error opening file:", error);
-      Alert.alert("Error", "Failed to open file. Please try again.");
+      Alert.alert("Error", "Failed to load file. Please try again.");
+      setLoadingDocument(false);
     }
   };
 
@@ -176,12 +246,15 @@ export default function InvoiceDetailScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background.DEFAULT }]}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
+      <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButtonHeader}
-          onPress={() => router.back()}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.back();
+          }}
         >
           <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
         </TouchableOpacity>
@@ -191,10 +264,8 @@ export default function InvoiceDetailScreen() {
 
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingTop: spacing.md },
-        ]}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
       >
         {/* Document Information Section */}
         <View style={styles.card}>
@@ -342,33 +413,169 @@ export default function InvoiceDetailScreen() {
           </View>
         </View>
 
-        {/* Original File Link */}
+        {/* Original File Section */}
         {(documentId || invoiceDataId) && (
-          <TouchableOpacity
-            style={styles.fileButton}
-            onPress={() => {
-              handleOpenFile();
-            }}
-            activeOpacity={0.7}
-          >
-            <Ionicons
-              name="document-text"
-              size={24}
-              color={colors.primary.DEFAULT}
-            />
-            <View style={styles.fileButtonText}>
-              <Text style={styles.fileButtonTitle}>View Original File</Text>
-              <Text style={styles.fileButtonSubtitle}>Tap to open</Text>
-            </View>
-            <Ionicons
-              name="chevron-forward"
-              size={20}
-              color={colors.text.secondary}
-            />
-          </TouchableOpacity>
+          <View style={styles.fileSection}>
+            <TouchableOpacity
+              style={styles.fileButton}
+              onPress={() => {
+                handleOpenFile();
+              }}
+              activeOpacity={0.7}
+              disabled={loadingDocument}
+            >
+              <Ionicons
+                name="document-text"
+                size={24}
+                color={colors.primary.DEFAULT}
+              />
+              <View style={styles.fileButtonText}>
+                <Text style={styles.fileButtonTitle}>View Original File</Text>
+                <Text style={styles.fileButtonSubtitle}>
+                  {loadingDocument ? "Loading..." : showDocumentPreview ? "Tap to hide" : "Tap to preview"}
+                </Text>
+              </View>
+              {loadingDocument ? (
+                <ActivityIndicator size="small" color={colors.primary.DEFAULT} />
+              ) : (
+                <Ionicons
+                  name={showDocumentPreview ? "chevron-up" : "chevron-down"}
+                  size={20}
+                  color={colors.text.secondary}
+                />
+              )}
+            </TouchableOpacity>
+
+            {/* Inline Document Preview */}
+            {showDocumentPreview && documentUrl && (
+              <View style={styles.documentPreviewContainer}>
+                {isImage ? (
+                  <Image
+                    source={{ uri: documentUrl }}
+                    style={styles.documentImage}
+                    resizeMode="contain"
+                    onError={() => {
+                      Alert.alert("Error", "Unable to load image. The file may be corrupted or inaccessible.");
+                      setShowDocumentPreview(false);
+                    }}
+                  />
+                ) : (
+                  <WebView
+                    key={documentUrl} // Force remount when URL changes
+                    source={{ uri: documentUrl }}
+                    style={styles.documentWebView}
+                    startInLoadingState={true}
+                    scalesPageToFit={true}
+                    javaScriptEnabled={true}
+                    domStorageEnabled={true}
+                    allowsInlineMediaPlayback={true}
+                    mediaPlaybackRequiresUserAction={false}
+                    onError={(syntheticEvent) => {
+                      const { nativeEvent } = syntheticEvent;
+                      console.error('WebView error: ', nativeEvent);
+                      
+                      const formatLower = (fileFormat || '').toLowerCase();
+                      const isWordFile = formatLower.match(/^(doc|docx)$/) ||
+                                        documentUrl?.includes('officeapps.live.com');
+                      const isPdfFile = formatLower === 'pdf' || 
+                                       formatLower.includes('pdf') ||
+                                       documentUrl?.includes('docs.google.com/viewer');
+                      
+                      if (isWordFile || isPdfFile) {
+                        Alert.alert(
+                          "Preview Unavailable",
+                          `Unable to preview ${isPdfFile ? 'PDF' : 'Word'} document inline. Would you like to open it externally?`,
+                          [
+                            { text: "Cancel", style: "cancel", onPress: () => setShowDocumentPreview(false) },
+                            {
+                              text: "Open Externally",
+                              onPress: async () => {
+                                setShowDocumentPreview(false);
+                                const file_id = documentId || invoiceDataId;
+                                if (file_id) {
+                                  await invoiceService.previewDocument(file_id);
+                                }
+                              },
+                            },
+                          ]
+                        );
+                      } else {
+                        Alert.alert("Error", "Unable to display document. It may need to be downloaded.");
+                        setShowDocumentPreview(false);
+                      }
+                    }}
+                    onHttpError={(syntheticEvent) => {
+                      const { nativeEvent } = syntheticEvent;
+                      console.error('WebView HTTP error: ', nativeEvent);
+                      
+                      const formatLower = (fileFormat || '').toLowerCase();
+                      const isPdfFile = formatLower === 'pdf' || formatLower.includes('pdf');
+                      
+                      // HTTP errors (like 403, 401) might indicate authentication issues
+                      if (nativeEvent.statusCode === 403 || nativeEvent.statusCode === 401) {
+                        Alert.alert(
+                          "Authentication Required",
+                          isPdfFile 
+                            ? "This PDF requires authentication. The viewer service cannot access it. Opening externally..."
+                            : "This document requires authentication. Opening externally...",
+                          [
+                            {
+                              text: "OK",
+                              onPress: async () => {
+                                setShowDocumentPreview(false);
+                                const file_id = documentId || invoiceDataId;
+                                if (file_id) {
+                                  await invoiceService.previewDocument(file_id);
+                                }
+                              },
+                            },
+                          ]
+                        );
+                      } else if (nativeEvent.statusCode >= 400) {
+                        // Other HTTP errors
+                        const formatLower = (fileFormat || '').toLowerCase();
+                        const isPdfFile = formatLower === 'pdf' || formatLower.includes('pdf');
+                        const isWordFile = formatLower.match(/^(doc|docx)$/);
+                        
+                        Alert.alert(
+                          "Preview Error",
+                          `Unable to load ${isPdfFile ? 'PDF' : isWordFile ? 'Word document' : 'document'}. Status: ${nativeEvent.statusCode}`,
+                          [
+                            { text: "Cancel", style: "cancel", onPress: () => setShowDocumentPreview(false) },
+                            {
+                              text: "Try Externally",
+                              onPress: async () => {
+                                setShowDocumentPreview(false);
+                                const file_id = documentId || invoiceDataId;
+                                if (file_id) {
+                                  await invoiceService.previewDocument(file_id);
+                                }
+                              },
+                            },
+                          ]
+                        );
+                      }
+                    }}
+                    renderLoading={() => (
+                      <View style={styles.documentLoadingContainer}>
+                        <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
+                        <Text style={styles.documentLoadingText}>Loading document...</Text>
+                      </View>
+                    )}
+                  />
+                )}
+                <TouchableOpacity
+                  style={styles.closePreviewButton}
+                  onPress={() => setShowDocumentPreview(false)}
+                >
+                  <Ionicons name="close" size={24} color={colors.text.primary} />
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
         )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -388,50 +595,51 @@ const getStyles = (colors: ReturnType<typeof getColors>) =>
     },
     scrollContent: {
       paddingBottom: spacing.xl,
-      paddingHorizontal: spacing.lg,
+      paddingHorizontal: 20,
     },
     header: {
-      backgroundColor: colors.background.light,
-      paddingBottom: spacing.md,
-      paddingHorizontal: spacing.lg,
-      ...shadows.sm,
       flexDirection: "row",
-      alignItems: "center",
       justifyContent: "space-between",
+      alignItems: "flex-start",
+      paddingHorizontal: 20,
+      paddingTop: 20,
+      paddingBottom: 24,
+      gap: 12,
     },
     backButtonHeader: {
       padding: spacing.xs,
     },
     headerTitle: {
-      fontSize: typography.sizes.lg,
-      fontWeight: typography.weights.bold,
-      fontFamily: typography.fontFamily.bold,
+      fontSize: 28,
+      fontWeight: "700",
       color: colors.text.primary,
     },
     placeholder: {
       width: 40,
     },
     card: {
-      backgroundColor: colors.background.light,
-      borderRadius: borderRadius.md,
-      padding: spacing.lg,
-      marginBottom: spacing.md,
-      ...shadows.sm,
+      backgroundColor: colors.background.card,
+      borderRadius: 16,
+      padding: 18,
+      marginBottom: 16,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
+      elevation: 3,
       borderWidth: 1,
-      borderColor: colors.border.light,
+      borderColor: colors.border.DEFAULT,
     },
     cardTitle: {
-      fontSize: typography.sizes.xl,
-      fontWeight: typography.weights.bold,
-      fontFamily: typography.fontFamily.bold,
+      fontSize: 20,
+      fontWeight: "700",
       color: colors.text.primary,
-      marginBottom: spacing.xs,
+      marginBottom: 8,
     },
     cardSubtitle: {
-      fontSize: typography.sizes.sm,
-      fontFamily: typography.fontFamily.regular,
-      color: colors.primary.DEFAULT,
-      marginBottom: spacing.md,
+      fontSize: 13,
+      color: colors.text.secondary,
+      marginBottom: 16,
     },
     fieldsGrid: {
       gap: spacing.md,
@@ -440,53 +648,56 @@ const getStyles = (colors: ReturnType<typeof getColors>) =>
       marginBottom: spacing.sm,
     },
     fieldLabel: {
-      fontSize: typography.sizes.sm,
-      fontFamily: typography.fontFamily.medium,
+      fontSize: 13,
+      fontWeight: "500",
       color: colors.text.secondary,
-      marginBottom: spacing.xs,
+      marginBottom: 8,
     },
     inputField: {
       backgroundColor: colors.background.DEFAULT,
-      borderRadius: borderRadius.sm,
-      padding: spacing.md,
+      borderRadius: 12,
+      padding: 16,
       borderWidth: 1,
-      borderColor: colors.border.light,
+      borderColor: colors.border.DEFAULT,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      minHeight: 44,
+      minHeight: 48,
     },
     inputText: {
-      fontSize: typography.sizes.md,
-      fontFamily: typography.fontFamily.regular,
+      fontSize: 15,
       color: colors.text.primary,
       flex: 1,
     },
-    fileButton: {
-      backgroundColor: colors.background.light,
-      borderRadius: borderRadius.md,
-      padding: spacing.md,
+    fileSection: {
       marginBottom: spacing.md,
+    },
+    fileButton: {
+      backgroundColor: colors.background.card,
+      borderRadius: 16,
+      padding: 18,
       flexDirection: "row",
       alignItems: "center",
-      ...shadows.sm,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
+      elevation: 3,
       borderWidth: 1,
-      borderColor: colors.border.light,
+      borderColor: colors.border.DEFAULT,
     },
     fileButtonText: {
       flex: 1,
-      marginLeft: spacing.md,
+      marginLeft: 16,
     },
     fileButtonTitle: {
-      fontSize: typography.sizes.md,
-      fontWeight: typography.weights.semibold,
-      fontFamily: typography.fontFamily.semibold,
+      fontSize: 15,
+      fontWeight: "600",
       color: colors.text.primary,
-      marginBottom: spacing.xs / 2,
+      marginBottom: 2,
     },
     fileButtonSubtitle: {
-      fontSize: typography.sizes.xs,
-      fontFamily: typography.fontFamily.regular,
+      fontSize: 13,
       color: colors.text.secondary,
     },
     loadingText: {
@@ -522,6 +733,55 @@ const getStyles = (colors: ReturnType<typeof getColors>) =>
       fontSize: typography.sizes.md,
       fontWeight: typography.weights.semibold,
       fontFamily: typography.fontFamily.semibold,
+    },
+    documentPreviewContainer: {
+      marginTop: 12,
+      borderRadius: 16,
+      overflow: 'hidden',
+      backgroundColor: colors.background.card,
+      borderWidth: 1,
+      borderColor: colors.border.DEFAULT,
+      position: 'relative',
+      minHeight: 400,
+      maxHeight: 600,
+    },
+    documentWebView: {
+      width: '100%',
+      height: 500,
+      backgroundColor: colors.background.DEFAULT,
+    },
+    documentImage: {
+      width: '100%',
+      height: 500,
+      backgroundColor: colors.background.DEFAULT,
+    },
+    documentLoadingContainer: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.background.DEFAULT,
+    },
+    documentLoadingText: {
+      marginTop: spacing.md,
+      fontSize: typography.sizes.sm,
+      color: colors.text.secondary,
+    },
+    closePreviewButton: {
+      position: 'absolute',
+      top: 12,
+      right: 12,
+      backgroundColor: colors.background.card,
+      borderRadius: 20,
+      padding: 8,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 4,
+      elevation: 5,
     },
   });
 

@@ -18,7 +18,14 @@ import {
 import { gql, useMutation, useQuery } from "@apollo/client";
 import { ReactNativeFile } from "apollo-upload-client";
 import * as SecureStore from "expo-secure-store";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  Camera,
+  Upload,
+  FileText,
+  Zap,
+  Shield,
+} from "lucide-react-native";
 import {
   borderRadius,
   getColors,
@@ -27,6 +34,7 @@ import {
   typography,
 } from "../../src/constants/theme";
 import { useTheme } from "../../src/context/theme-context";
+import * as Haptics from "expo-haptics";
 
 const UPLOAD_MULTIPLE = gql`
   mutation UploadMultiple($files: [Upload!]!, $branchId: String!) {
@@ -85,8 +93,97 @@ interface Branch {
   name: string;
 }
 
+function FeatureCard({
+  icon: Icon,
+  title,
+  description,
+  color,
+  bgColor,
+  textColor,
+  secondaryTextColor,
+  iconBgColor,
+  borderColor,
+}: {
+  icon: any;
+  title: string;
+  description: string;
+  color: string;
+  bgColor: string;
+  textColor: string;
+  secondaryTextColor: string;
+  iconBgColor: string;
+  borderColor: string;
+}) {
+  return (
+    <View style={[featureCardStyles.featureCard, { backgroundColor: bgColor, borderColor }]}>
+      <View
+        style={[
+          featureCardStyles.featureIcon,
+          { backgroundColor: iconBgColor },
+        ]}>
+        <Icon size={24} color={color} />
+      </View>
+      <View style={featureCardStyles.featureContent}>
+        <Text style={[featureCardStyles.featureTitle, { color: textColor }]}>{title}</Text>
+        <Text style={[featureCardStyles.featureDescription, { color: secondaryTextColor }]}>
+          {description}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+function ActionButton({
+  icon: Icon,
+  title,
+  description,
+  color,
+  bgColor,
+  onPress,
+  textColor,
+  secondaryTextColor,
+  disabled,
+}: {
+  icon: any;
+  title: string;
+  description: string;
+  color: string;
+  bgColor: string;
+  onPress?: () => void;
+  textColor: string;
+  secondaryTextColor: string;
+  disabled?: boolean;
+}) {
+  return (
+    <TouchableOpacity
+      style={[actionButtonStyles.actionButton, { backgroundColor: bgColor }, disabled && actionButtonStyles.actionButtonDisabled]}
+      onPress={onPress}
+      activeOpacity={0.7}
+      disabled={disabled}>
+      <View style={actionButtonStyles.actionButtonContent}>
+        <View style={actionButtonStyles.actionButtonLeft}>
+          <View style={[actionButtonStyles.actionIconContainer, { backgroundColor: color }]}>
+            <Icon size={28} color="#ffffff" strokeWidth={2.5} />
+          </View>
+          <View style={actionButtonStyles.actionTextContainer}>
+            <Text style={[actionButtonStyles.actionButtonTitle, { color: textColor }]}>
+              {title}
+            </Text>
+            <Text
+              style={[
+                actionButtonStyles.actionButtonDescription,
+                { color: secondaryTextColor },
+              ]}>
+              {description}
+            </Text>
+          </View>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
 export default function UploadScreen() {
-  const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const colors = getColors(theme);
   const styles = getStyles(colors);
@@ -170,6 +267,7 @@ export default function UploadScreen() {
   };
 
   const pickImage = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const hasPermission = await requestPermissions();
     if (!hasPermission) return;
 
@@ -216,6 +314,7 @@ export default function UploadScreen() {
   };
 
   const pickDocument = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: [
@@ -269,6 +368,7 @@ export default function UploadScreen() {
   };
 
   const takePhoto = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const hasPermission = await requestPermissions();
     if (!hasPermission) return;
 
@@ -442,60 +542,52 @@ export default function UploadScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      {/* Sticky Header */}
-      <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
-        <View style={styles.headerTop}>
-          <View style={styles.greetingSection}>
-            <View style={styles.headerIcon}>
-              <Ionicons
-                name="document-attach"
-                size={24}
-                color={colors.primary.DEFAULT}
-              />
-            </View>
-            <View style={styles.greetingText}>
-              <Text style={styles.greeting}>Upload Invoice</Text>
-              <Text style={styles.greetingSubtitle}>
-                Capture or select invoice files for data extraction
-              </Text>
-            </View>
-          </View>
-        </View>
-      </View>
-
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background.DEFAULT }]}>
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={[
-          styles.content,
-          { paddingTop: 90 + insets.top },
-        ]}
+        showsVerticalScrollIndicator={false}
       >
+        <View style={styles.header}>
+          <Text style={[styles.headerTitle, { color: colors.text.primary }]}>
+            Scan Invoice
+          </Text>
+          <Text
+            style={[
+              styles.headerSubtitle,
+              { color: colors.text.secondary },
+            ]}>
+            Choose how you'd like to add your invoice
+          </Text>
+        </View>
+
         {/* Branch Selection */}
         {availableBranches.length > 1 && (
-          <TouchableOpacity
-            style={styles.branchSelector}
-            onPress={() => setShowBranchModal(true)}
-          >
-            <View style={styles.branchSelectorContent}>
-              <Ionicons
-                name="business"
-                size={20}
-                color={colors.primary.DEFAULT}
-              />
-              <View style={styles.branchSelectorText}>
-                <Text style={styles.branchSelectorLabel}>Branch</Text>
-                <Text style={styles.branchSelectorValue}>
-                  {selectedBranch ? selectedBranch.name : "Select Branch"}
-                </Text>
+          <View style={styles.branchContainer}>
+            <TouchableOpacity
+              style={styles.branchSelector}
+              onPress={() => setShowBranchModal(true)}
+            >
+              <View style={styles.branchSelectorContent}>
+                <Ionicons
+                  name="business"
+                  size={20}
+                  color={colors.primary.DEFAULT}
+                />
+                <View style={styles.branchSelectorText}>
+                  <Text style={styles.branchSelectorLabel}>Branch</Text>
+                  <Text style={styles.branchSelectorValue}>
+                    {selectedBranch ? selectedBranch.name : "Select Branch"}
+                  </Text>
+                </View>
+                <Ionicons
+                  name="chevron-down"
+                  size={20}
+                  color={colors.text.secondary}
+                />
               </View>
-              <Ionicons
-                name="chevron-down"
-                size={20}
-                color={colors.text.secondary}
-              />
-            </View>
-          </TouchableOpacity>
+            </TouchableOpacity>
+          </View>
         )}
 
         {availableBranches.length === 1 && selectedBranch && (
@@ -505,38 +597,40 @@ export default function UploadScreen() {
           </View>
         )}
 
-        <View style={styles.actionButtons}>
-          <TouchableOpacity
+        <View style={styles.actionsContainer}>
+          <ActionButton
+            icon={Camera}
+            title="Scan with Camera"
+            description="Take a photo of your invoice"
+            color={colors.primary.DEFAULT}
+            bgColor={colors.stats.blue.bg}
             onPress={takePhoto}
+            textColor={colors.text.primary}
+            secondaryTextColor={colors.text.secondary}
             disabled={uploading}
-            activeOpacity={0.8}
-            style={[
-              styles.actionButton,
-              uploading && styles.actionButtonDisabled,
-            ]}
-          >
-            <Ionicons name="camera" size={24} color={colors.background.light} />
-            <Text style={styles.actionButtonText}>Capture Invoice</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
+          />
+          <ActionButton
+            icon={Upload}
+            title="Upload from Gallery"
+            description="Select from your photos"
+            color={colors.stats.purple.text}
+            bgColor={colors.stats.purple.bg}
+            onPress={pickImage}
+            textColor={colors.text.primary}
+            secondaryTextColor={colors.text.secondary}
+            disabled={uploading}
+          />
+          <ActionButton
+            icon={FileText}
+            title="Select Document"
+            description="Choose PDF or document files"
+            color={colors.stats.orange.text}
+            bgColor={colors.stats.orange.bg}
             onPress={pickDocument}
+            textColor={colors.text.primary}
+            secondaryTextColor={colors.text.secondary}
             disabled={uploading}
-            activeOpacity={0.8}
-            style={[
-              styles.actionButton,
-              uploading && styles.actionButtonDisabled,
-            ]}
-          >
-            <Ionicons
-              name="document-attach"
-              size={24}
-              color={colors.background.light}
-            />
-            <Text style={styles.actionButtonText} numberOfLines={1}>
-              Select Invoice
-            </Text>
-          </TouchableOpacity>
+          />
         </View>
 
         {selectedImages.length > 0 && (
@@ -607,18 +701,140 @@ export default function UploadScreen() {
         )}
 
         {selectedImages.length === 0 && (
-          <View style={styles.emptyState}>
-            <Ionicons
-              name="document-attach-outline"
-              size={64}
-              color={colors.text.muted}
-            />
-            <Text style={styles.emptyText}>No invoices selected</Text>
-            <Text style={styles.emptySubtext}>
-              Capture or select invoice images, PDFs, or documents to extract
-              data and sync with your ERP system
-            </Text>
-          </View>
+          <>
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>
+                How it works
+              </Text>
+              <View style={styles.featuresContainer}>
+                <FeatureCard
+                  icon={Camera}
+                  title="Capture Invoice"
+                  description="Scan or upload your invoice document"
+                  color={colors.primary.DEFAULT}
+                  bgColor={colors.background.card}
+                  textColor={colors.text.primary}
+                  secondaryTextColor={colors.text.secondary}
+                  iconBgColor={colors.stats.blue.bg}
+                  borderColor={colors.border.DEFAULT}
+                />
+                <FeatureCard
+                  icon={Zap}
+                  title="Auto Extract Data"
+                  description="AI extracts all key information instantly"
+                  color={colors.stats.yellow.text}
+                  bgColor={colors.background.card}
+                  textColor={colors.text.primary}
+                  secondaryTextColor={colors.text.secondary}
+                  iconBgColor={colors.stats.yellow.bg}
+                  borderColor={colors.border.DEFAULT}
+                />
+                <FeatureCard
+                  icon={Shield}
+                  title="Secure Storage"
+                  description="Your data is encrypted and protected"
+                  color={colors.stats.green.text}
+                  bgColor={colors.background.card}
+                  textColor={colors.text.primary}
+                  secondaryTextColor={colors.text.secondary}
+                  iconBgColor={colors.stats.green.bg}
+                  borderColor={colors.border.DEFAULT}
+                />
+              </View>
+            </View>
+
+            <View
+              style={[
+                styles.infoBox,
+                {
+                  backgroundColor: colors.stats.blue.bg,
+                },
+              ]}>
+              <View
+                style={[
+                  styles.infoIconContainer,
+                  { backgroundColor: colors.background.card },
+                ]}>
+                <FileText size={20} color={colors.primary.DEFAULT} />
+              </View>
+              <View style={styles.infoContent}>
+                <Text
+                  style={[
+                    styles.infoTitle,
+                    {
+                      color: colors.stats.blue.text,
+                    },
+                  ]}>
+                  Supported Formats
+                </Text>
+                <Text
+                  style={[
+                    styles.infoText,
+                    {
+                      color: colors.stats.blue.text,
+                    },
+                  ]}>
+                  PDF, JPG, PNG files up to 10MB
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.tipsSection}>
+              <Text style={[styles.tipsTitle, { color: colors.text.primary }]}>
+                Tips for best results:
+              </Text>
+              <View style={styles.tipsList}>
+                <View style={styles.tipItem}>
+                  <View
+                    style={[
+                      styles.tipBullet,
+                      { backgroundColor: colors.primary.DEFAULT },
+                    ]}
+                  />
+                  <Text
+                    style={[styles.tipText, { color: colors.text.secondary }]}>
+                    Ensure good lighting when taking photos
+                  </Text>
+                </View>
+                <View style={styles.tipItem}>
+                  <View
+                    style={[
+                      styles.tipBullet,
+                      { backgroundColor: colors.primary.DEFAULT },
+                    ]}
+                  />
+                  <Text
+                    style={[styles.tipText, { color: colors.text.secondary }]}>
+                    Keep the invoice flat and in focus
+                  </Text>
+                </View>
+                <View style={styles.tipItem}>
+                  <View
+                    style={[
+                      styles.tipBullet,
+                      { backgroundColor: colors.primary.DEFAULT },
+                    ]}
+                  />
+                  <Text
+                    style={[styles.tipText, { color: colors.text.secondary }]}>
+                    Capture all corners of the document
+                  </Text>
+                </View>
+                <View style={styles.tipItem}>
+                  <View
+                    style={[
+                      styles.tipBullet,
+                      { backgroundColor: colors.primary.DEFAULT },
+                    ]}
+                  />
+                  <Text
+                    style={[styles.tipText, { color: colors.text.secondary }]}>
+                    Avoid shadows and glare on the paper
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </>
         )}
       </ScrollView>
 
@@ -682,94 +898,116 @@ export default function UploadScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
+
+const featureCardStyles = StyleSheet.create({
+  featureCard: {
+    flexDirection: "row",
+    padding: 18,
+    borderRadius: 16,
+    gap: 14,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+  },
+  featureIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  featureContent: {
+    flex: 1,
+    justifyContent: "center",
+  },
+  featureTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  featureDescription: {
+    fontSize: 13,
+  },
+});
+
+const actionButtonStyles = StyleSheet.create({
+  actionButton: {
+    borderRadius: 18,
+    padding: 22,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 4,
+    marginBottom: 16,
+  },
+  actionButtonDisabled: {
+    opacity: 0.6,
+  },
+  actionButtonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  actionButtonLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+  },
+  actionIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  actionTextContainer: {
+    flex: 1,
+  },
+  actionButtonTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+  actionButtonDescription: {
+    fontSize: 14,
+  },
+});
 
 const getStyles = (colors: ReturnType<typeof getColors>) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.DEFAULT,
     },
     scrollView: {
       flex: 1,
     },
-    content: {
-      padding: spacing.lg,
-      paddingBottom: 100, // Extra padding for bottom navigation
-    },
     header: {
-      backgroundColor: colors.background.light,
-      paddingBottom: spacing.md,
-      paddingHorizontal: spacing.lg,
-      ...shadows.sm,
-      position: "absolute",
-      top: 0,
-      left: 0,
-      right: 0,
-      zIndex: 1000,
+      paddingHorizontal: 20,
+      paddingTop: 20,
+      paddingBottom: 24,
     },
-    headerTop: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
+    headerTitle: {
+      fontSize: 28,
+      fontWeight: "700",
+      marginBottom: 8,
     },
-    greetingSection: {
-      flexDirection: "row",
-      alignItems: "center",
-      flex: 1,
+    headerSubtitle: {
+      fontSize: 15,
     },
-    headerIcon: {
-      width: 48,
-      height: 48,
-      borderRadius: borderRadius.md,
-      backgroundColor: colors.primary.lightGradient[0],
-      justifyContent: "center",
-      alignItems: "center",
-      marginRight: spacing.md,
+    branchContainer: {
+      paddingHorizontal: 20,
+      marginBottom: 24,
     },
-    greetingText: {
-      flex: 1,
-    },
-    greeting: {
-      fontSize: typography.sizes.md,
-      fontWeight: typography.weights.medium,
-      fontFamily: typography.fontFamily.medium,
-      color: colors.text.primary,
-      marginBottom: spacing.xs / 2,
-    },
-    greetingSubtitle: {
-      fontSize: typography.sizes.xs,
-      fontFamily: typography.fontFamily.regular,
-      color: colors.text.secondary,
-    },
-    actionButtons: {
-      flexDirection: "row",
-      gap: spacing.md,
-      marginBottom: spacing.lg,
-    },
-    actionButton: {
-      flex: 1,
-      maxWidth: "48%",
-      backgroundColor: colors.primary.DEFAULT,
-      borderRadius: borderRadius.md,
-      padding: spacing.md,
-      alignItems: "center",
-      justifyContent: "center",
-      gap: spacing.xs,
-      ...shadows.sm,
-      minHeight: 90,
-    },
-    actionButtonDisabled: {
-      opacity: 0.6,
-    },
-    actionButtonText: {
-      color: colors.background.light,
-      fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.semibold,
-      fontFamily: typography.fontFamily.semibold,
-      textAlign: "center",
+    actionsContainer: {
+      paddingHorizontal: 20,
+      marginBottom: 32,
     },
     selectedImagesContainer: {
       marginBottom: spacing.lg,
@@ -879,10 +1117,9 @@ const getStyles = (colors: ReturnType<typeof getColors>) =>
       color: colors.text.secondary,
     },
     branchSelector: {
-      backgroundColor: colors.background.light,
+      backgroundColor: colors.background.card,
       borderRadius: borderRadius.md,
       padding: spacing.md,
-      marginBottom: spacing.lg,
       borderWidth: 1,
       borderColor: colors.border.DEFAULT,
       ...shadows.sm,
@@ -970,6 +1207,75 @@ const getStyles = (colors: ReturnType<typeof getColors>) =>
       fontWeight: typography.weights.semibold,
       fontFamily: typography.fontFamily.semibold,
       color: colors.primary.DEFAULT,
+    },
+    section: {
+      paddingHorizontal: 20,
+      marginBottom: 24,
+    },
+    sectionTitle: {
+      fontSize: 20,
+      fontWeight: "700",
+      marginBottom: 16,
+    },
+    featuresContainer: {
+      gap: 12,
+    },
+    infoBox: {
+      flexDirection: "row",
+      padding: 18,
+      borderRadius: 16,
+      marginHorizontal: 20,
+      marginBottom: 24,
+      gap: 14,
+      borderWidth: 1,
+      borderColor: "rgba(30, 58, 138, 0.2)",
+    },
+    infoIconContainer: {
+      width: 40,
+      height: 40,
+      borderRadius: 10,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    infoContent: {
+      flex: 1,
+      justifyContent: "center",
+    },
+    infoTitle: {
+      fontSize: 14,
+      fontWeight: "600",
+      marginBottom: 2,
+    },
+    infoText: {
+      fontSize: 13,
+    },
+    tipsSection: {
+      paddingHorizontal: 20,
+      paddingBottom: 32,
+    },
+    tipsTitle: {
+      fontSize: 16,
+      fontWeight: "600",
+      marginBottom: 12,
+    },
+    tipsList: {
+      gap: 10,
+    },
+    tipItem: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 12,
+    },
+    tipBullet: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      marginTop: 6,
+    },
+    tipText: {
+      flex: 1,
+      fontSize: 14,
+      lineHeight: 20,
     },
   });
 
