@@ -1,12 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Calendar, Filter, Search, X } from 'lucide-react-native';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
     Animated,
     Dimensions,
     Modal,
     PanResponder,
+    Platform,
     ScrollView,
     StyleSheet,
     Text,
@@ -14,6 +15,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getColors } from '../src/constants/theme';
 import { useTheme } from '../src/context/theme-context';
@@ -66,6 +68,10 @@ export default function FilterBottomSheet({
   const colors = getColors(theme);
   const translateY = useRef(new Animated.Value(BOTTOM_SHEET_MAX_HEIGHT)).current;
   const opacity = useRef(new Animated.Value(0)).current;
+  const [showFromDatePicker, setShowFromDatePicker] = useState(false);
+  const [showToDatePicker, setShowToDatePicker] = useState(false);
+  const [tempFromDate, setTempFromDate] = useState<Date | null>(null);
+  const [tempToDate, setTempToDate] = useState<Date | null>(null);
 
   useEffect(() => {
     if (visible) {
@@ -150,6 +156,73 @@ export default function FilterBottomSheet({
   const handleReset = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onReset();
+  };
+
+  const formatDateForInput = (dateString: string): Date => {
+    if (!dateString) return new Date();
+    const date = new Date(dateString);
+    return isNaN(date.getTime()) ? new Date() : date;
+  };
+
+  const formatDateForDisplay = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const handleFromDateChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowFromDatePicker(false);
+      if (selectedDate && event.type !== 'dismissed') {
+        onFromDateChange(formatDateForDisplay(selectedDate));
+      }
+    } else {
+      // iOS - update temp date as user scrolls
+      if (selectedDate) {
+        setTempFromDate(selectedDate);
+      }
+    }
+  };
+
+  const handleToDateChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowToDatePicker(false);
+      if (selectedDate && event.type !== 'dismissed') {
+        onToDateChange(formatDateForDisplay(selectedDate));
+      }
+    } else {
+      // iOS - update temp date as user scrolls
+      if (selectedDate) {
+        setTempToDate(selectedDate);
+      }
+    }
+  };
+
+  const handleFromDatePickerOpen = () => {
+    setTempFromDate(formatDateForInput(fromDate));
+    setShowFromDatePicker(true);
+  };
+
+  const handleFromDatePickerConfirm = () => {
+    if (tempFromDate) {
+      onFromDateChange(formatDateForDisplay(tempFromDate));
+    }
+    setShowFromDatePicker(false);
+    setTempFromDate(null);
+  };
+
+  const handleToDatePickerOpen = () => {
+    setTempToDate(formatDateForInput(toDate));
+    setShowToDatePicker(true);
+  };
+
+  const handleToDatePickerConfirm = () => {
+    if (tempToDate) {
+      onToDateChange(formatDateForDisplay(tempToDate));
+    }
+    setShowToDatePicker(false);
+    setTempToDate(null);
   };
 
   const statusOptions = [
@@ -317,31 +390,133 @@ export default function FilterBottomSheet({
                   <Text style={[styles.dateLabel, { color: colors.text.secondary }]}>
                     From Date
                   </Text>
-                  <View style={[styles.dateInputContainer, { backgroundColor: colors.background.DEFAULT, borderColor: colors.border.DEFAULT }]}>
+                  <TouchableOpacity
+                    style={[styles.dateInputContainer, { backgroundColor: colors.background.DEFAULT, borderColor: colors.border.DEFAULT }]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      handleFromDatePickerOpen();
+                    }}
+                    activeOpacity={0.7}>
                     <Calendar size={18} color={colors.text.secondary} />
-                    <TextInput
-                      style={[styles.dateInput, { color: colors.text.primary }]}
-                      value={fromDate}
-                      onChangeText={onFromDateChange}
-                      placeholder="YYYY-MM-DD"
-                      placeholderTextColor={colors.text.muted}
+                    <Text style={[styles.dateInput, { color: colors.text.primary }]}>
+                      {fromDate || 'YYYY-MM-DD'}
+                    </Text>
+                  </TouchableOpacity>
+                  {showFromDatePicker && Platform.OS === 'ios' && (
+                    <Modal
+                      transparent
+                      animationType="slide"
+                      visible={showFromDatePicker}
+                      onRequestClose={() => setShowFromDatePicker(false)}>
+                      <View style={styles.datePickerModal}>
+                        <View style={[styles.datePickerContainer, { backgroundColor: colors.background.card }]}>
+                          <View style={styles.datePickerHeader}>
+                            <TouchableOpacity
+                              onPress={() => setShowFromDatePicker(false)}
+                              style={styles.datePickerButton}>
+                              <Text style={[styles.datePickerButtonText, { color: colors.primary.DEFAULT }]}>
+                                Cancel
+                              </Text>
+                            </TouchableOpacity>
+                            <Text style={[styles.datePickerTitle, { color: colors.text.primary }]}>
+                              Select From Date
+                            </Text>
+                            <TouchableOpacity
+                              onPress={handleFromDatePickerConfirm}
+                              style={styles.datePickerButton}>
+                              <Text style={[styles.datePickerButtonText, { color: colors.primary.DEFAULT }]}>
+                                Done
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
+                          <DateTimePicker
+                            value={tempFromDate || formatDateForInput(fromDate)}
+                            mode="date"
+                            display="spinner"
+                            onChange={handleFromDateChange}
+                            maximumDate={toDate ? formatDateForInput(toDate) : new Date()}
+                            style={styles.datePicker}
+                          />
+                        </View>
+                      </View>
+                    </Modal>
+                  )}
+                  {showFromDatePicker && Platform.OS === 'android' && (
+                    <DateTimePicker
+                      value={formatDateForInput(fromDate)}
+                      mode="date"
+                      display="default"
+                      onChange={handleFromDateChange}
+                      maximumDate={toDate ? formatDateForInput(toDate) : new Date()}
                     />
-                  </View>
+                  )}
                 </View>
                 <View style={styles.dateInputWrapper}>
                   <Text style={[styles.dateLabel, { color: colors.text.secondary }]}>
                     To Date
                   </Text>
-                  <View style={[styles.dateInputContainer, { backgroundColor: colors.background.DEFAULT, borderColor: colors.border.DEFAULT }]}>
+                  <TouchableOpacity
+                    style={[styles.dateInputContainer, { backgroundColor: colors.background.DEFAULT, borderColor: colors.border.DEFAULT }]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      handleToDatePickerOpen();
+                    }}
+                    activeOpacity={0.7}>
                     <Calendar size={18} color={colors.text.secondary} />
-                    <TextInput
-                      style={[styles.dateInput, { color: colors.text.primary }]}
-                      value={toDate}
-                      onChangeText={onToDateChange}
-                      placeholder="YYYY-MM-DD"
-                      placeholderTextColor={colors.text.muted}
+                    <Text style={[styles.dateInput, { color: colors.text.primary }]}>
+                      {toDate || 'YYYY-MM-DD'}
+                    </Text>
+                  </TouchableOpacity>
+                  {showToDatePicker && Platform.OS === 'ios' && (
+                    <Modal
+                      transparent
+                      animationType="slide"
+                      visible={showToDatePicker}
+                      onRequestClose={() => setShowToDatePicker(false)}>
+                      <View style={styles.datePickerModal}>
+                        <View style={[styles.datePickerContainer, { backgroundColor: colors.background.card }]}>
+                          <View style={styles.datePickerHeader}>
+                            <TouchableOpacity
+                              onPress={() => setShowToDatePicker(false)}
+                              style={styles.datePickerButton}>
+                              <Text style={[styles.datePickerButtonText, { color: colors.primary.DEFAULT }]}>
+                                Cancel
+                              </Text>
+                            </TouchableOpacity>
+                            <Text style={[styles.datePickerTitle, { color: colors.text.primary }]}>
+                              Select To Date
+                            </Text>
+                            <TouchableOpacity
+                              onPress={handleToDatePickerConfirm}
+                              style={styles.datePickerButton}>
+                              <Text style={[styles.datePickerButtonText, { color: colors.primary.DEFAULT }]}>
+                                Done
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
+                          <DateTimePicker
+                            value={tempToDate || formatDateForInput(toDate)}
+                            mode="date"
+                            display="spinner"
+                            onChange={handleToDateChange}
+                            minimumDate={fromDate ? formatDateForInput(fromDate) : undefined}
+                            maximumDate={new Date()}
+                            style={styles.datePicker}
+                          />
+                        </View>
+                      </View>
+                    </Modal>
+                  )}
+                  {showToDatePicker && Platform.OS === 'android' && (
+                    <DateTimePicker
+                      value={formatDateForInput(toDate)}
+                      mode="date"
+                      display="default"
+                      onChange={handleToDateChange}
+                      minimumDate={fromDate ? formatDateForInput(fromDate) : undefined}
+                      maximumDate={new Date()}
                     />
-                  </View>
+                  )}
                 </View>
               </View>
             </View>
@@ -384,24 +559,27 @@ export default function FilterBottomSheet({
               </View>
             </View>
 
-            {/* Action Buttons - Fixed at bottom */}
-             <View style={[styles.actions, { borderTopColor: colors.border.DEFAULT, backgroundColor: colors.background.card }]}>
-                <TouchableOpacity
+          </ScrollView>
+          
+          {/* Action Buttons - Fixed at bottom with safe area */}
+          <SafeAreaView edges={['bottom']} style={[styles.actionsContainer, { borderTopColor: colors.border.DEFAULT, backgroundColor: colors.background.card }]}>
+            <View style={styles.actions}>
+              <TouchableOpacity
                 style={[styles.resetButton, { borderColor: colors.border.DEFAULT }]}
                 onPress={handleReset}
                 activeOpacity={0.7}>
                 <Text style={[styles.resetButtonText, { color: colors.text.secondary }]}>
-                    Reset
+                  Reset
                 </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
+              </TouchableOpacity>
+              <TouchableOpacity
                 style={[styles.applyButton, { backgroundColor: colors.primary.DEFAULT }]}
                 onPress={handleApply}
                 activeOpacity={0.8}>
                 <Text style={styles.applyButtonText}>Apply Filters</Text>
-                </TouchableOpacity>
+              </TouchableOpacity>
             </View>
-          </ScrollView>
+          </SafeAreaView>
         </SafeAreaView>
       </Animated.View>
     </Modal>
@@ -533,6 +711,11 @@ const styles = StyleSheet.create({
   dateInput: {
     flex: 1,
     fontSize: 15,
+    color: '#000',
+  },
+  actionsContainer: {
+    borderTopWidth: 1,
+    paddingHorizontal: 20,
   },
   statusContainer: {
     flexDirection: 'row',
@@ -584,6 +767,40 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#ffffff',
+  },
+  datePickerModal: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  datePickerContainer: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 20,
+  },
+  datePickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  datePickerButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  datePickerButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  datePickerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  datePicker: {
+    height: 200,
   },
 });
 
