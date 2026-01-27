@@ -10,6 +10,7 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { getColors } from "../src/constants/theme";
 import { ThemeProvider, useTheme } from "../src/context/theme-context";
 import { apolloClient } from "../src/lib/apollo/apolloClient";
@@ -42,9 +43,11 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeProvider>
-      <AppContent />
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <AppContent />
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }
 
