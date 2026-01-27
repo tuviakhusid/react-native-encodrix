@@ -4,12 +4,12 @@ import {
   StyleSheet,
   Modal,
   TouchableOpacity,
-  SafeAreaView,
   Animated,
   PanResponder,
   Dimensions,
   Image,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../src/context/theme-context';
 import { getColors } from '../src/constants/theme';
 import { Settings, LogOut, User } from 'lucide-react-native';
@@ -162,7 +162,7 @@ export default function ProfileBottomSheet({
           },
         ]}
         {...panResponder.panHandlers}>
-        <SafeAreaView edges={['bottom']}>
+        <SafeAreaView style={styles.safeAreaContainer} edges={['bottom']}>
           <View style={styles.dragHandleContainer}>
             <View
               style={[
@@ -265,8 +265,6 @@ const styles = StyleSheet.create({
     right: 0,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    paddingHorizontal: 20,
-    paddingTop: 12,
     maxHeight: BOTTOM_SHEET_MAX_HEIGHT,
     borderTopWidth: 1,
     shadowColor: '#000',
@@ -274,6 +272,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 12,
     elevation: 16,
+  },
+  safeAreaContainer: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 12,
   },
   dragHandleContainer: {
     alignItems: 'center',
