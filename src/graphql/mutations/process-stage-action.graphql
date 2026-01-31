@@ -1,0 +1,28 @@
+mutation ProcessStageAction(
+  $instanceId: String!
+  $action: String!
+  $comments: String
+) {
+  processStageAction(
+    instanceId: $instanceId
+    action: $action
+    comments: $comments
+  ) {
+    ok
+    action
+    completed
+    rejected
+    resumed
+    nextStage {
+      name
+      order
+      assignedTo
+      dueDays
+    }
+    workflowStatus
+    documentStatus
+    error
+    googleDriveResult
+  }
+}
+

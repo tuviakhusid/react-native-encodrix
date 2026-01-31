@@ -66,6 +66,13 @@ const GET_CURRENT_USER_DATA = gql`
         name
         isActive
       }
+      packageDetails {
+        packageName
+        features {
+          featureName
+          isIncluded
+        }
+      }
       roleBranchAssignments {
         roleId
         roleName
@@ -77,6 +84,12 @@ const GET_CURRENT_USER_DATA = gql`
         assignAll
       }
       licenses
+      subscription
+      isTrial
+      trialStartedAt
+      isTrialExpired
+      trialDaysRemaining
+      trialShouldShowWarning
     }
   }
 `;
@@ -201,6 +214,8 @@ export default function UploadScreen() {
     }
   );
 
+  const isTrialExpired = userData?.getMyProfile?.trialDaysRemaining === 0 || userData?.getMyProfile?.isTrialExpired;
+
   // Extract branches from user data
   useEffect(() => {
     if (userData?.getMyProfile?.roleBranchAssignments) {
@@ -267,6 +282,13 @@ export default function UploadScreen() {
   };
 
   const pickImage = async () => {
+    if (isTrialExpired) {
+      Alert.alert(
+        "Trial Expired",
+        "Your free trial has expired. Please subscribe to continue scanning invoices."
+      );
+      return;
+    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const hasPermission = await requestPermissions();
     if (!hasPermission) return;
@@ -314,6 +336,13 @@ export default function UploadScreen() {
   };
 
   const pickDocument = async () => {
+    if (isTrialExpired) {
+      Alert.alert(
+        "Trial Expired",
+        "Your free trial has expired. Please subscribe to continue scanning invoices."
+      );
+      return;
+    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
       const result = await DocumentPicker.getDocumentAsync({
@@ -368,6 +397,13 @@ export default function UploadScreen() {
   };
 
   const takePhoto = async () => {
+    if (isTrialExpired) {
+      Alert.alert(
+        "Trial Expired",
+        "Your free trial has expired. Please subscribe to continue scanning invoices."
+      );
+      return;
+    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const hasPermission = await requestPermissions();
     if (!hasPermission) return;
@@ -430,6 +466,13 @@ export default function UploadScreen() {
   };
 
   const handleUpload = async () => {
+    if (isTrialExpired) {
+      Alert.alert(
+        "Trial Expired",
+        "Your free trial has expired. Please subscribe to continue scanning invoices."
+      );
+      return;
+    }
     if (selectedImages.length === 0) {
       Alert.alert(
         "No Invoices",
@@ -598,6 +641,14 @@ export default function UploadScreen() {
         )}
 
         <View style={styles.actionsContainer}>
+          {isTrialExpired && (
+            <View style={[styles.trialWarning, { backgroundColor: colors.status.rejectedBg, borderColor: colors.status.rejected }]}>
+              <Ionicons name="alert-circle" size={20} color={colors.status.rejected} />
+              <Text style={[styles.trialWarningText, { color: colors.status.rejected }]}>
+                Your free trial has expired. Please subscribe to continue scanning invoices.
+              </Text>
+            </View>
+          )}
           <ActionButton
             icon={Camera}
             title="Scan with Camera"
@@ -607,7 +658,7 @@ export default function UploadScreen() {
             onPress={takePhoto}
             textColor={colors.text.primary}
             secondaryTextColor={colors.text.secondary}
-            disabled={uploading}
+            disabled={uploading || isTrialExpired}
           />
           <ActionButton
             icon={Upload}
@@ -618,7 +669,7 @@ export default function UploadScreen() {
             onPress={pickImage}
             textColor={colors.text.primary}
             secondaryTextColor={colors.text.secondary}
-            disabled={uploading}
+            disabled={uploading || isTrialExpired}
           />
           <ActionButton
             icon={FileText}
@@ -629,7 +680,7 @@ export default function UploadScreen() {
             onPress={pickDocument}
             textColor={colors.text.primary}
             secondaryTextColor={colors.text.secondary}
-            disabled={uploading}
+            disabled={uploading || isTrialExpired}
           />
         </View>
 
@@ -675,11 +726,11 @@ export default function UploadScreen() {
         {selectedImages.length > 0 && (
           <TouchableOpacity
             onPress={handleUpload}
-            disabled={uploading}
+            disabled={uploading || isTrialExpired}
             activeOpacity={0.8}
             style={[
               styles.uploadButton,
-              uploading && styles.uploadButtonDisabled,
+              (uploading || isTrialExpired) && styles.uploadButtonDisabled,
             ]}
           >
             {uploading ? (
@@ -1276,6 +1327,20 @@ const getStyles = (colors: ReturnType<typeof getColors>) =>
       flex: 1,
       fontSize: 14,
       lineHeight: 20,
+    },
+    trialWarning: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 16,
+      borderRadius: 12,
+      marginBottom: 16,
+      gap: 12,
+      borderWidth: 1,
+    },
+    trialWarningText: {
+      flex: 1,
+      fontSize: 14,
+      fontWeight: '600',
     },
   });
 

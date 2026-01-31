@@ -16,6 +16,13 @@ query GetCurrentUserData {
       name
       isActive
     }
+    packageDetails {
+      packageName
+      features {
+        featureName
+        isIncluded
+      }
+    }
     roleBranchAssignments {
       roleId
       roleName
@@ -27,6 +34,12 @@ query GetCurrentUserData {
       assignAll
     }
     licenses
+    subscription
+    isTrial
+    trialStartedAt
+    isTrialExpired
+    trialDaysRemaining
+    trialShouldShowWarning
   }
 }
 

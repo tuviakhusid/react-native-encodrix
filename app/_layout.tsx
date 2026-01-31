@@ -1,10 +1,10 @@
 import { ApolloProvider } from "@apollo/client";
 import {
-  Manrope_400Regular,
-  Manrope_500Medium,
-  Manrope_600SemiBold,
-  Manrope_700Bold,
-  useFonts,
+    Manrope_400Regular,
+    Manrope_500Medium,
+    Manrope_600SemiBold,
+    Manrope_700Bold,
+    useFonts,
 } from "@expo-google-fonts/manrope";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -73,6 +73,7 @@ function AppContent() {
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="login" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="profile" options={{ headerShown: false }} />
       </Stack>
     </ApolloProvider>
   );

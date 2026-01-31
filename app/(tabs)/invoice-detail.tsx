@@ -2,7 +2,7 @@ import { gql, useMutation, useQuery } from "@apollo/client";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Trash2 } from "lucide-react-native";
+import { CheckCircle2, Trash2, XCircle } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -13,6 +13,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -27,6 +28,7 @@ import {
 } from "../../src/constants/theme";
 import { useTheme } from "../../src/context/theme-context";
 import invoiceService from "../../src/lib/services/invoice.service";
+import uploadService from "../../src/lib/services/upload.service";
 
 const GET_EXTRACTED_DATA = gql`
   query GetExtractedData($invoiceId: String!) {
@@ -77,6 +79,11 @@ interface ExtractedData {
   s3_url?: string;
   workflow_status?: string;
   stage_status?: string;
+  workflow_instance_id?: string;
+  instance_id?: string;
+  document_status?: string;
+  next_stage?: any;
+  is_mapping_confirmed?: boolean;
   [key: string]: any;
 }
 
@@ -100,16 +107,37 @@ export default function InvoiceDetailScreen() {
   const [loadingDocument, setLoadingDocument] = useState(false);
   const [selectedLineItem, setSelectedLineItem] = useState<any | null>(null);
   const [showLineItemModal, setShowLineItemModal] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [isOnHold, setIsOnHold] = useState(false);
+  const [comment, setComment] = useState("");
 
   const {
     data,
     loading: queryLoading,
     error,
+    refetch,
   } = useQuery(GET_EXTRACTED_DATA, {
     variables: { invoiceId: invoiceDataId },
     skip: !invoiceDataId,
     fetchPolicy: "network-only",
   });
+
+  const GET_CURRENT_USER_DATA = gql`
+    query GetCurrentUserData {
+      getMyProfile {
+        trialDaysRemaining
+        isTrialExpired
+      }
+    }
+  `;
+
+  const { data: userData } = useQuery(GET_CURRENT_USER_DATA, {
+    fetchPolicy: "cache-and-network",
+  });
+
+  const isTrialExpired = userData?.getMyProfile?.trialDaysRemaining === 0 || userData?.getMyProfile?.isTrialExpired;
 
   const [deleteDocument, { loading: deleting }] = useMutation(DELETE_DOCUMENT);
 
@@ -265,7 +293,198 @@ export default function InvoiceDetailScreen() {
     setShowLineItemModal(true);
   };
 
+  const getWorkflowInstanceId = (): string | null => {
+    return extractedData?.workflow_instance_id || 
+           extractedData?.instance_id || 
+           null;
+  };
+
+  const getProceedButtonLabel = (): string => {
+    if (isOnHold) {
+      return "Confirm";
+    }
+
+    const stageStatus = extractedData?.stage_status;
+    
+    if (stageStatus === "Approval") {
+      return "Approve";
+    }
+    if (stageStatus === "mapping_to_finance" && !extractedData?.is_mapping_confirmed) {
+      return "Map to Finance";
+    }
+    if (stageStatus === "Data Extraction") {
+      return "Processed";
+    }
+    if (!extractedData?.next_stage && !extractedData?.stage_status?.toLowerCase()?.includes("review")) {
+      return "Complete";
+    }
+    return "Proceed";
+  };
+
+  const getProceedButtonColor = (): string => {
+    if (isOnHold) {
+      return colors.status.rejected;
+    }
+
+    const stageStatus = extractedData?.stage_status;
+    
+    if (stageStatus === "Approval") {
+      return colors.stats.green.text;
+    }
+    if (stageStatus === "mapping_to_finance" && !extractedData?.is_mapping_confirmed) {
+      return "#9333ea"; // purple
+    }
+    if (stageStatus === "Data Extraction") {
+      return colors.primary.DEFAULT;
+    }
+    return colors.stats.green.text;
+  };
+
+  const handleProceed = async () => {
+    if (isTrialExpired) {
+      Alert.alert(
+        "Trial Expired",
+        "Your free trial has expired. Please subscribe to continue processing invoices."
+      );
+      return;
+    }
+    const instanceId = getWorkflowInstanceId();
+    if (!instanceId) {
+      Alert.alert("Error", "Workflow instance ID is not available");
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const action = isOnHold ? "hold" : "accept";
+      const actionComment = isOnHold 
+        ? (comment || "Document put on hold")
+        : (comment || "Document approved");
+
+      const response = await uploadService.processStageAction(
+        instanceId,
+        action,
+        actionComment
+      );
+
+      if (!response?.ok) {
+        Alert.alert("Error", response?.error || "Unknown error");
+        return;
+      }
+
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert(
+        "Success",
+        isOnHold 
+          ? "Document marked as On Hold successfully"
+          : "Document processed successfully",
+        [
+          {
+            text: "OK",
+            onPress: async () => {
+              // Refetch data
+              const { data: refetchData } = await refetch();
+              if (refetchData?.getExractedData) {
+                setExtractedData(refetchData.getExractedData);
+              }
+              setIsOnHold(false);
+              setComment("");
+            },
+          },
+        ]
+      );
+    } catch (error: any) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert("Error", error.message || "Something went wrong while processing the action");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleReject = () => {
+    setShowRejectDialog(true);
+  };
+
+  const confirmReject = async () => {
+    if (!rejectionReason.trim()) {
+      Alert.alert("Error", "Please provide a reason for rejection");
+      return;
+    }
+
+    const instanceId = getWorkflowInstanceId();
+    if (!instanceId) {
+      Alert.alert("Error", "Workflow instance ID is not available");
+      setShowRejectDialog(false);
+      setRejectionReason("");
+      return;
+    }
+
+    setShowRejectDialog(false);
+    setIsProcessing(true);
+    try {
+      const response = await uploadService.processStageAction(
+        instanceId,
+        "reject",
+        rejectionReason.trim()
+      );
+
+      if (!response?.ok) {
+        Alert.alert("Error", response?.error || "Unknown error");
+        return;
+      }
+
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert(
+        "Success",
+        "Document rejected successfully",
+        [
+          {
+            text: "OK",
+            onPress: async () => {
+              // Refetch data
+              const { data: refetchData } = await refetch();
+              if (refetchData?.getExractedData) {
+                setExtractedData(refetchData.getExractedData);
+              }
+              setRejectionReason("");
+              router.back();
+            },
+          },
+        ]
+      );
+    } catch (error: any) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert("Error", error.message || "Something went wrong while rejecting the document");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const cancelReject = () => {
+    setShowRejectDialog(false);
+    setRejectionReason("");
+  };
+
+  const shouldShowActionButtons = (): boolean => {
+    const instanceId = getWorkflowInstanceId();
+    if (!instanceId) return false;
+
+    const documentStatus = extractedData?.document_status;
+    if (documentStatus === "rejected" || documentStatus === "completed" || documentStatus === "on_hold") {
+      return false;
+    }
+
+    return true;
+  };
+
   const handleDeleteDocument = async () => {
+    if (isTrialExpired) {
+      Alert.alert(
+        "Trial Expired",
+        "Your free trial has expired. Please subscribe to continue managing invoices."
+      );
+      return;
+    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
     const documentName = extractedData?.extracted_data?.invoice_number || 
@@ -431,9 +650,9 @@ export default function InvoiceDetailScreen() {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Invoice Details</Text>
         <TouchableOpacity
-          style={styles.deleteButtonHeader}
+          style={[styles.deleteButtonHeader, { opacity: (deleting || isTrialExpired) ? 0.5 : 1 }]}
           onPress={handleDeleteDocument}
-          disabled={deleting}
+          disabled={deleting || isTrialExpired}
           activeOpacity={0.7}
         >
           {deleting ? (
@@ -798,7 +1017,129 @@ export default function InvoiceDetailScreen() {
             )}
           </View>
         )}
+
+        {/* Action Buttons Section */}
+        {shouldShowActionButtons() && (
+          <View style={styles.actionButtonsContainer}>
+            {isTrialExpired && (
+              <View style={[styles.trialWarning, { backgroundColor: colors.status.rejectedBg, borderColor: colors.status.rejected }]}>
+                <Ionicons name="alert-circle" size={20} color={colors.status.rejected} />
+                <Text style={[styles.trialWarningText, { color: colors.status.rejected }]}>
+                  Your free trial has expired. Please subscribe to continue processing invoices.
+                </Text>
+              </View>
+            )}
+            <View style={styles.actionButtonsRow}>
+              <TouchableOpacity
+                style={[
+                  styles.rejectButton,
+                  {
+                    backgroundColor: colors.background.card,
+                    borderColor: colors.status.rejected,
+                    opacity: (isProcessing || isTrialExpired) ? 0.5 : 1,
+                  },
+                ]}
+                onPress={handleReject}
+                disabled={isProcessing || isTrialExpired}
+                activeOpacity={0.7}>
+                <XCircle size={20} color={colors.status.rejected} />
+                <Text style={[styles.rejectButtonText, { color: colors.status.rejected }]}>
+                  Reject
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.proceedButton,
+                  {
+                    backgroundColor: getProceedButtonColor(),
+                    opacity: (isProcessing || isTrialExpired) ? 0.6 : 1,
+                  },
+                ]}
+                onPress={handleProceed}
+                disabled={isProcessing || isTrialExpired}
+                activeOpacity={0.8}>
+                {isProcessing ? (
+                  <>
+                    <ActivityIndicator size="small" color="#ffffff" />
+                    <Text style={styles.proceedButtonText}>Processing...</Text>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 size={20} color="#ffffff" />
+                    <Text style={styles.proceedButtonText}>
+                      {getProceedButtonLabel()}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
       </ScrollView>
+
+      {/* Reject Dialog Modal */}
+      <Modal
+        visible={showRejectDialog}
+        transparent
+        animationType="fade"
+        onRequestClose={cancelReject}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.rejectDialogContent, { backgroundColor: colors.background.card, borderColor: colors.border.DEFAULT }]}>
+            <View style={styles.rejectDialogHeader}>
+              <XCircle size={24} color={colors.status.rejected} />
+              <Text style={[styles.rejectDialogTitle, { color: colors.text.primary }]}>
+                Reject Document
+              </Text>
+            </View>
+            <Text style={[styles.rejectDialogMessage, { color: colors.text.secondary }]}>
+              Please provide a reason for rejecting this document. This information will be recorded and may be reviewed.
+            </Text>
+            <View style={[styles.rejectDialogInputContainer, { borderColor: colors.border.DEFAULT }]}>
+              <Text style={[styles.rejectDialogLabel, { color: colors.text.secondary }]}>
+                Reason for Rejection <Text style={{ color: colors.status.rejected }}>*</Text>
+              </Text>
+              <TextInput
+                style={[styles.rejectDialogInput, { color: colors.text.primary, borderColor: colors.border.DEFAULT }]}
+                value={rejectionReason}
+                onChangeText={setRejectionReason}
+                placeholder="Enter the reason for rejection..."
+                placeholderTextColor={colors.text.muted}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+              />
+            </View>
+            <View style={styles.rejectDialogActions}>
+              <TouchableOpacity
+                style={[styles.rejectDialogCancelButton, { borderColor: colors.border.DEFAULT }]}
+                onPress={cancelReject}
+                activeOpacity={0.7}>
+                <Text style={[styles.rejectDialogCancelText, { color: colors.text.secondary }]}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.rejectDialogConfirmButton,
+                  {
+                    backgroundColor: colors.status.rejected,
+                    opacity: isProcessing || !rejectionReason.trim() ? 0.6 : 1,
+                  },
+                ]}
+                onPress={confirmReject}
+                disabled={isProcessing || !rejectionReason.trim()}
+                activeOpacity={0.8}>
+                {isProcessing ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <Text style={styles.rejectDialogConfirmText}>Confirm Rejection</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Line Item Details Modal */}
       <Modal
@@ -1234,6 +1575,130 @@ const getStyles = (colors: ReturnType<typeof getColors>) =>
     modalEmptyText: {
       fontSize: 15,
       textAlign: 'center',
+    },
+    actionButtonsContainer: {
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      backgroundColor: colors.background.DEFAULT,
+      borderTopWidth: 1,
+      borderTopColor: colors.border.DEFAULT,
+    },
+    actionButtonsRow: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    rejectButton: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 14,
+      borderRadius: 12,
+      borderWidth: 1,
+      gap: 8,
+    },
+    rejectButtonText: {
+      fontSize: 15,
+      fontWeight: '600',
+    },
+    proceedButton: {
+      flex: 2,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 14,
+      borderRadius: 12,
+      gap: 8,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    proceedButtonText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: '#ffffff',
+    },
+    rejectDialogContent: {
+      borderRadius: 20,
+      padding: 24,
+      width: '90%',
+      maxWidth: 400,
+      borderWidth: 1,
+    },
+    rejectDialogHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      marginBottom: 16,
+    },
+    rejectDialogTitle: {
+      fontSize: 20,
+      fontWeight: '700',
+    },
+    rejectDialogMessage: {
+      fontSize: 14,
+      marginBottom: 20,
+      lineHeight: 20,
+    },
+    rejectDialogInputContainer: {
+      marginBottom: 24,
+    },
+    rejectDialogLabel: {
+      fontSize: 13,
+      fontWeight: '600',
+      marginBottom: 8,
+    },
+    rejectDialogInput: {
+      minHeight: 100,
+      padding: 12,
+      borderRadius: 12,
+      borderWidth: 1,
+      fontSize: 15,
+      textAlignVertical: 'top',
+    },
+    rejectDialogActions: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    rejectDialogCancelButton: {
+      flex: 1,
+      paddingVertical: 12,
+      borderRadius: 12,
+      borderWidth: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    rejectDialogCancelText: {
+      fontSize: 15,
+      fontWeight: '600',
+    },
+    rejectDialogConfirmButton: {
+      flex: 2,
+      paddingVertical: 12,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    rejectDialogConfirmText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: '#ffffff',
+    },
+    trialWarning: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 16,
+      borderRadius: 12,
+      marginBottom: 16,
+      gap: 12,
+      borderWidth: 1,
+    },
+    trialWarningText: {
+      flex: 1,
+      fontSize: 14,
+      fontWeight: '600',
     },
   });
 

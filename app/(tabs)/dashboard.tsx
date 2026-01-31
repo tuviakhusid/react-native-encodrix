@@ -3,8 +3,10 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import {
+  ArrowRight,
   CheckCircle2,
   Clock,
+  Eye,
   FileText,
   Filter,
   Moon,
@@ -35,6 +37,7 @@ import {
 } from "../../src/constants/theme";
 import { useTheme } from "../../src/context/theme-context";
 import authService from "../../src/lib/services/auth.service";
+import uploadService from "../../src/lib/services/upload.service";
 
 const GET_CURRENT_USER_DATA = gql`
   query GetCurrentUserData {
@@ -46,6 +49,8 @@ const GET_CURRENT_USER_DATA = gql`
       role
       profile_image: profileImage
       organization_name: organizationName
+      trialDaysRemaining
+      isTrialExpired
     }
   }
 `;
@@ -75,7 +80,12 @@ const GET_PROCESSED_DOCUMENTS = gql`
         id
         documentName
         documentType
+        documentHighLevelType
         workflowStatus
+        wfStageStatus
+        workflowDocumentInstanceId
+        isMappingConfirmed
+        nextStage
         createdAt
         updatedAt
         businessName
@@ -110,7 +120,12 @@ interface Document {
   id: string;
   documentName: string;
   documentType: string;
+  documentHighLevelType?: string;
   workflowStatus: string;
+  wfStageStatus?: string;
+  workflowDocumentInstanceId?: string;
+  isMappingConfirmed?: boolean;
+  nextStage?: any;
   createdAt: string;
   updatedAt: string;
   businessName: string;
@@ -198,6 +213,7 @@ export default function DashboardScreen() {
   }, []);
 
   const [deleteDocument] = useMutation(DELETE_DOCUMENT);
+  const [processingDocumentId, setProcessingDocumentId] = useState<string | null>(null);
 
   const { data, loading, error, refetch, networkStatus } = useQuery(GET_PROCESSED_DOCUMENTS, {
     variables: {
@@ -224,6 +240,8 @@ export default function DashboardScreen() {
   const { data: userData } = useQuery(GET_CURRENT_USER_DATA, {
     fetchPolicy: "cache-and-network",
   });
+
+  const isTrialExpired = userData?.getMyProfile?.trialDaysRemaining === 0 || userData?.getMyProfile?.isTrialExpired;
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -311,7 +329,109 @@ export default function DashboardScreen() {
     setTimeout(() => refetch(), 100);
   };
 
+  const getProceedButtonIcon = (item: Document): any => {
+    const stageStatus = item.wfStageStatus;
+    
+    if (stageStatus === "Approval") {
+      return CheckCircle2;
+    }
+    if (stageStatus === "mapping_to_finance" && !item.isMappingConfirmed) {
+      return ArrowRight;
+    }
+    if (stageStatus === "Data Extraction") {
+      return CheckCircle2;
+    }
+    return CheckCircle2;
+  };
+
+  const getProceedButtonBgColor = (item: Document): string => {
+    const stageStatus = item.wfStageStatus;
+    
+    if (stageStatus === "Approval") {
+      return colors.stats.green.bg;
+    }
+    if (stageStatus === "mapping_to_finance" && !item.isMappingConfirmed) {
+      return colors.stats.purple.bg;
+    }
+    if (stageStatus === "Data Extraction") {
+      return colors.stats.blue.bg;
+    }
+    return colors.stats.green.bg;
+  };
+
+  const getProceedButtonIconColor = (item: Document): string => {
+    const stageStatus = item.wfStageStatus;
+    
+    if (stageStatus === "Approval") {
+      return colors.stats.green.text;
+    }
+    if (stageStatus === "mapping_to_finance" && !item.isMappingConfirmed) {
+      return colors.stats.purple.text;
+    }
+    if (stageStatus === "Data Extraction") {
+      return colors.stats.blue.text;
+    }
+    return colors.stats.green.text;
+  };
+
+  const handleProceedDocument = async (item: Document) => {
+    if (isTrialExpired) {
+      Alert.alert(
+        "Trial Expired",
+        "Your free trial has expired. Please subscribe to continue processing invoices."
+      );
+      return;
+    }
+
+    const instanceId = item.workflowDocumentInstanceId;
+    if (!instanceId) {
+      Alert.alert("Error", "Workflow instance ID is not available");
+      return;
+    }
+
+    setProcessingDocumentId(item.id);
+    try {
+      const response = await uploadService.processStageAction(
+        instanceId,
+        "accept",
+        "Document approved"
+      );
+
+      if (!response?.ok) {
+        Alert.alert("Error", response?.error || "Unknown error");
+        return;
+      }
+
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert("Success", "Document processed successfully");
+      await refetch();
+    } catch (error: any) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert("Error", error.message || "Something went wrong while processing the document");
+    } finally {
+      setProcessingDocumentId(null);
+    }
+  };
+
+  const shouldShowProceedButton = (item: Document): boolean => {
+    if (!item.workflowDocumentInstanceId) return false;
+    
+    const documentStatus = item.workflowStatus?.toLowerCase();
+    if (documentStatus === "rejected" || documentStatus === "completed" || documentStatus === "on_hold") {
+      return false;
+    }
+
+    return true;
+  };
+
   const handleDeleteDocument = async (documentId: string, documentName: string) => {
+    if (isTrialExpired) {
+      Alert.alert(
+        "Trial Expired",
+        "Your free trial has expired. Please subscribe to continue managing invoices."
+      );
+      return;
+    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
     Alert.alert(
@@ -435,54 +555,114 @@ export default function DashboardScreen() {
       <View
         style={[
           styles.invoiceItem,
-          { backgroundColor: colors.background.card, borderColor: colors.border.DEFAULT },
+          { 
+            backgroundColor: colors.background.card, 
+            borderColor: colors.border.DEFAULT,
+            borderLeftWidth: 4,
+            borderLeftColor: statusColors.bg, // Colored left border for status
+          },
         ]}
       >
-        <TouchableOpacity
-          style={styles.invoiceItemContent}
-          activeOpacity={0.6}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            handleDocumentPress(item);
-          }}
-        >
+        <View style={styles.invoiceItemContent}>
+          {/* Left Side - Information */}
           <View style={styles.invoiceLeft}>
-            <View
-              style={[
-                styles.invoiceIconContainer,
-                { backgroundColor: statusColors.bg },
-              ]}
-            >
-              <FileText size={20} color={statusColors.text} />
-            </View>
             <View style={styles.invoiceInfo}>
               <Text style={[styles.invoiceNumber, { color: colors.text.primary }]} numberOfLines={1}>
                 {item.documentName || "Untitled Invoice"}
               </Text>
-              <Text
-                style={[styles.invoiceVendor, { color: colors.text.secondary }]}>
+              <Text style={[styles.invoiceVendor, { color: colors.text.secondary }]} numberOfLines={1}>
                 {vendorName}
               </Text>
+              <View style={styles.infoRow}>
+                <Text style={[styles.invoiceDate, { color: colors.text.muted }]}>
+                  {formatDate(displayDate)}
+                </Text>
+              </View>
+              <View style={styles.invoiceMetaRow}>
+                {item.documentHighLevelType && (
+                  <View style={[styles.metaBadge, { backgroundColor: colors.background.gray }]}>
+                    <Text style={[styles.metaLabel, { color: colors.text.muted }]}>Type:</Text>
+                    <Text style={[styles.metaValue, { color: colors.text.secondary }]}>
+                      {item.documentHighLevelType}
+                    </Text>
+                  </View>
+                )}
+                {item.wfStageStatus && (
+                  <View style={[styles.metaBadge, { backgroundColor: colors.background.gray }]}>
+                    <Text style={[styles.metaLabel, { color: colors.text.muted }]}>Stage:</Text>
+                    <Text style={[styles.metaValue, { color: colors.text.secondary }]}>
+                      {item.wfStageStatus}
+                    </Text>
+                  </View>
+                )}
+              </View>
+              <View style={[styles.statusBadgeInline, { backgroundColor: statusColors.bg }]}>
+                <Text style={[styles.statusTextInline, { color: statusColors.text }]}>
+                  {item.workflowStatus || "Pending"}
+                </Text>
+              </View>
             </View>
           </View>
-          <View style={styles.invoiceRight}>
-            <Text style={[styles.invoiceDate, { color: colors.text.secondary }]}>
-              {formatDate(displayDate)}
-            </Text>
-            <View style={[styles.statusBadge, { backgroundColor: statusColors.bg }]}>
-              <Text style={[styles.statusText, { color: statusColors.text }]}>
-                {item.workflowStatus || "Pending"}
-              </Text>
-            </View>
+
+          {/* Right Side - Action Buttons (Vertically Aligned) */}
+          <View style={[styles.invoiceRightButtons, { borderLeftColor: colors.border.light }]}>
+            {/* Eye Icon Button - View Invoice Detail */}
+            <TouchableOpacity
+              style={[
+                styles.actionButton,
+                {
+                  backgroundColor: colors.background.gray,
+                  marginBottom: 8,
+                },
+              ]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                handleDocumentPress(item);
+              }}
+              activeOpacity={0.7}
+            >
+              <Eye size={18} color={colors.text.secondary} strokeWidth={2.5} />
+            </TouchableOpacity>
+            {shouldShowProceedButton(item) && (
+              <TouchableOpacity
+                style={[
+                  styles.actionButton,
+                  {
+                    backgroundColor: getProceedButtonBgColor(item),
+                    marginBottom: 8,
+                    opacity: (processingDocumentId === item.id || isTrialExpired) ? 0.6 : 1,
+                  },
+                ]}
+                onPress={() => handleProceedDocument(item)}
+                activeOpacity={0.7}
+                disabled={processingDocumentId === item.id || isTrialExpired}
+              >
+                {processingDocumentId === item.id ? (
+                  <ActivityIndicator size="small" color={getProceedButtonIconColor(item)} />
+                ) : (
+                  (() => {
+                    const Icon = getProceedButtonIcon(item);
+                    return <Icon size={18} color={getProceedButtonIconColor(item)} strokeWidth={2.5} />;
+                  })()
+                )}
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              style={[
+                styles.actionButton,
+                {
+                  backgroundColor: colors.status.rejectedBg,
+                  opacity: isTrialExpired ? 0.5 : 1,
+                },
+              ]}
+              onPress={() => handleDeleteDocument(item.id, item.documentName || "Untitled Invoice")}
+              activeOpacity={0.7}
+              disabled={isTrialExpired}
+            >
+              <Trash2 size={18} color={colors.status.rejected} strokeWidth={2.5} />
+            </TouchableOpacity>
           </View>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.deleteButton, { borderLeftColor: colors.border.DEFAULT }]}
-          onPress={() => handleDeleteDocument(item.id, item.documentName || "Untitled Invoice")}
-          activeOpacity={0.7}
-        >
-          <Trash2 size={18} color={colors.status.rejected} />
-        </TouchableOpacity>
+        </View>
       </View>
     );
   };
@@ -669,7 +849,7 @@ export default function DashboardScreen() {
         onClose={() => setProfileSheetVisible(false)}
         onSettings={() => {
           setProfileSheetVisible(false);
-          console.log('Settings clicked');
+          router.push('/profile');
         }}
         onLogout={handleLogout}
         userName={
@@ -835,8 +1015,6 @@ const getStyles = (colors: ReturnType<typeof getColors>) =>
       gap: 12,
     },
     invoiceItem: {
-      flexDirection: "row",
-      alignItems: "center",
       borderRadius: 16,
       shadowColor: "#000",
       shadowOffset: { width: 0, height: 2 },
@@ -849,56 +1027,77 @@ const getStyles = (colors: ReturnType<typeof getColors>) =>
     },
     invoiceItemContent: {
       flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      padding: 18,
-      flex: 1,
-    },
-    deleteButton: {
-      padding: 12,
-      justifyContent: "center",
-      alignItems: "center",
-      borderLeftWidth: 1,
+      padding: 16,
+      minHeight: 120,
     },
     invoiceLeft: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 12,
       flex: 1,
-    },
-    invoiceIconContainer: {
-      width: 48,
-      height: 48,
-      borderRadius: 14,
-      alignItems: "center",
-      justifyContent: "center",
+      marginRight: 12,
     },
     invoiceInfo: {
       flex: 1,
     },
     invoiceNumber: {
-      fontSize: 15,
-      fontWeight: "600",
-      marginBottom: 4,
+      fontSize: 16,
+      fontWeight: "700",
+      marginBottom: 6,
+      lineHeight: 22,
     },
     invoiceVendor: {
       fontSize: 13,
-    },
-    invoiceRight: {
-      alignItems: "flex-end",
-    },
-    invoiceDate: {
-      fontSize: 13,
       marginBottom: 6,
     },
-    statusBadge: {
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 8,
+    infoRow: {
+      marginBottom: 8,
     },
-    statusText: {
+    invoiceDate: {
+      fontSize: 12,
+    },
+    invoiceMetaRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 6,
+      marginBottom: 8,
+    },
+    metaBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 6,
+    },
+    metaLabel: {
+      fontSize: 11,
+      fontWeight: "500",
+    },
+    metaValue: {
       fontSize: 11,
       fontWeight: "600",
+    },
+    statusBadgeInline: {
+      alignSelf: "flex-start",
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 8,
+    },
+    statusTextInline: {
+      fontSize: 11,
+      fontWeight: "600",
+    },
+    invoiceRightButtons: {
+      justifyContent: "flex-start",
+      alignItems: "center",
+      paddingLeft: 12,
+      borderLeftWidth: 1,
+    },
+    actionButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 12,
+      justifyContent: "center",
+      alignItems: "center",
+      minWidth: 44,
     },
     loadingContainer: {
       alignItems: "center",

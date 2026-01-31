@@ -264,7 +264,7 @@ export default function FilterBottomSheet({
           },
         ]}
         {...panResponder.panHandlers}>
-        <SafeAreaView style={styles.safeAreaContainer}>
+        <SafeAreaView style={styles.safeAreaContainer} edges={['bottom']}>
           <View style={styles.dragHandleContainer}>
             <View
               style={[
@@ -561,8 +561,8 @@ export default function FilterBottomSheet({
 
           </ScrollView>
           
-          {/* Action Buttons - Fixed at bottom with safe area */}
-          <SafeAreaView edges={['bottom']} style={[styles.actionsContainer, { borderTopColor: colors.border.DEFAULT, backgroundColor: colors.background.card }]}>
+          {/* Action Buttons - Fixed at bottom */}
+          <View style={[styles.actionsContainer, { borderTopColor: colors.border.DEFAULT, backgroundColor: colors.background.card }]}>
             <View style={styles.actions}>
               <TouchableOpacity
                 style={[styles.resetButton, { borderColor: colors.border.DEFAULT }]}
@@ -579,7 +579,7 @@ export default function FilterBottomSheet({
                 <Text style={styles.applyButtonText}>Apply Filters</Text>
               </TouchableOpacity>
             </View>
-          </SafeAreaView>
+          </View>
         </SafeAreaView>
       </Animated.View>
     </Modal>
@@ -613,7 +613,6 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
     paddingTop: 12,
-    justifyContent: 'space-between',
   },
   dragHandleContainer: {
     alignItems: 'center',
@@ -715,7 +714,7 @@ const styles = StyleSheet.create({
   },
   actionsContainer: {
     borderTopWidth: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: 0,
   },
   statusContainer: {
     flexDirection: 'row',
