@@ -11,7 +11,8 @@ import {
   Filter,
   Moon,
   Sun,
-  Trash2
+  Trash2,
+  Bell
 } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
@@ -28,6 +29,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import FilterBottomSheet from "../../components/FilterBottomSheet";
 import ProfileBottomSheet from "../../components/ProfileBottomSheet";
+import NotificationDrawer from "../../components/NotificationDrawer";
 import {
   borderRadius,
   getColors,
@@ -199,6 +201,7 @@ export default function DashboardScreen() {
   const [toDate, setToDate] = useState("");
   
   const [showFilterSheet, setShowFilterSheet] = useState(false);
+  const [showNotificationDrawer, setShowNotificationDrawer] = useState(false);
   const { theme, toggleTheme } = useTheme();
   const colors = getColors(theme);
   const styles = getStyles(colors);
@@ -743,6 +746,19 @@ export default function DashboardScreen() {
 
             <TouchableOpacity
               style={[
+                styles.notificationButton,
+                { backgroundColor: colors.background.card, borderColor: colors.border.DEFAULT },
+              ]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setShowNotificationDrawer(true);
+              }}
+              activeOpacity={0.6}>
+              <Bell size={20} color={colors.primary.DEFAULT} strokeWidth={2.5} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
                 styles.profileButton,
                 { backgroundColor: colors.primary.DEFAULT },
               ]}
@@ -878,6 +894,18 @@ export default function DashboardScreen() {
         selectedStatus={selectedFilter}
         onStatusChange={setSelectedFilter}
       />
+
+      {/* Notification Drawer */}
+      <NotificationDrawer
+        open={showNotificationDrawer}
+        onClose={() => setShowNotificationDrawer(false)}
+        notifications={[]}
+        loading={false}
+        onNotificationPress={(notificationId) => {
+          // Handle notification press
+          console.log("Notification pressed:", notificationId);
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -945,6 +973,14 @@ const getStyles = (colors: ReturnType<typeof getColors>) =>
       fontWeight: "700",
     },
     themeButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 12,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1,
+    },
+    notificationButton: {
       width: 44,
       height: 44,
       borderRadius: 12,

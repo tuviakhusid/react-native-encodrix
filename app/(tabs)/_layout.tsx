@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import { Home, ScanLine } from "lucide-react-native";
+import { Home, ScanLine, Settings, FileText, DollarSign } from "lucide-react-native";
 import { Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { getColors } from "../../src/constants/theme";
@@ -30,7 +30,7 @@ export default function TabLayout() {
           shadowRadius: 8,
         },
         tabBarLabelStyle: {
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: "600",
           marginTop: -4,
         },
@@ -48,11 +48,38 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="documents"
+        options={{
+          title: "Documents",
+          tabBarIcon: ({ size, color }) => (
+            <FileText size={size} color={color} strokeWidth={2.5} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="upload"
         options={{
           title: "Scan",
           tabBarIcon: ({ size, color }) => (
             <ScanLine size={size} color={color} strokeWidth={2.5} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="cost-manager"
+        options={{
+          title: "Cost Manager",
+          tabBarIcon: ({ size, color }) => (
+            <DollarSign size={size} color={color} strokeWidth={2.5} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: "Settings",
+          tabBarIcon: ({ size, color }) => (
+            <Settings size={size} color={color} strokeWidth={2.5} />
           ),
         }}
       />
