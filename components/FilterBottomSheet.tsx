@@ -4,17 +4,17 @@ import * as Haptics from 'expo-haptics';
 import { Calendar, Filter, Search, X } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import {
-    Animated,
-    Dimensions,
-    Modal,
-    PanResponder,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Animated,
+  Dimensions,
+  Modal,
+  PanResponder,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getColors } from '../src/constants/theme';
@@ -73,6 +73,8 @@ export default function FilterBottomSheet({
   const [showToDatePicker, setShowToDatePicker] = useState(false);
   const [tempFromDate, setTempFromDate] = useState<Date | null>(null);
   const [tempToDate, setTempToDate] = useState<Date | null>(null);
+  const [showDateTypeDropdown, setShowDateTypeDropdown] = useState(false);
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
 
   useEffect(() => {
     if (visible) {
@@ -297,7 +299,7 @@ export default function FilterBottomSheet({
             
             {/* Search Section */}
             <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>
+              <Text style={[styles.filterLabel, { color: colors.text.secondary }]}>
                 Search
               </Text>
               <View style={[styles.searchContainer, { backgroundColor: colors.background.DEFAULT, borderColor: colors.border.DEFAULT }]}>
@@ -320,72 +322,57 @@ export default function FilterBottomSheet({
               </View>
             </View>
 
-            {/* Date Type Filter */}
+            {/* Date Type Filter and Status - Same Row */}
             <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>
-                Filter By Date Type
-              </Text>
-              <View style={styles.dateTypeContainer}>
-                <TouchableOpacity
-                  style={[
-                    styles.dateTypeOption,
-                    {
-                      backgroundColor: filterByDate === 'processing_date' 
-                        ? colors.primary.DEFAULT 
-                        : colors.background.DEFAULT,
-                      borderColor: filterByDate === 'processing_date' 
-                        ? colors.primary.DEFAULT 
-                        : colors.border.DEFAULT,
-                    },
-                  ]}
-                  onPress={() => onFilterByDateChange('processing_date')}
-                  activeOpacity={0.7}>
-                  <Text
-                    style={[
-                      styles.dateTypeText,
-                      {
-                        color: filterByDate === 'processing_date' 
-                          ? '#ffffff' 
-                          : colors.text.primary,
-                      },
-                    ]}>
-                    Processing Date
+              {/* <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>
+                Filters
+              </Text> */}
+              <View style={styles.filtersRow}>
+                {/* Date Type Dropdown */}
+                <View style={styles.filterDropdownWrapper}>
+                  <Text style={[styles.filterLabel, { color: colors.text.secondary }]}>
+                    Date Type
                   </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.dateTypeOption,
-                    {
-                      backgroundColor: filterByDate === 'issue_date' 
-                        ? colors.primary.DEFAULT 
-                        : colors.background.DEFAULT,
-                      borderColor: filterByDate === 'issue_date' 
-                        ? colors.primary.DEFAULT 
-                        : colors.border.DEFAULT,
-                    },
-                  ]}
-                  onPress={() => onFilterByDateChange('issue_date')}
-                  activeOpacity={0.7}>
-                  <Text
-                    style={[
-                      styles.dateTypeText,
-                      {
-                        color: filterByDate === 'issue_date' 
-                          ? '#ffffff' 
-                          : colors.text.primary,
-                      },
-                    ]}>
-                    Issue Date
+                  <TouchableOpacity
+                    style={[styles.filterDropdown, { backgroundColor: colors.background.DEFAULT, borderColor: colors.border.DEFAULT }]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setShowDateTypeDropdown(true);
+                    }}
+                    activeOpacity={0.7}>
+                    <Text style={[styles.filterDropdownText, { color: colors.text.primary }]}>
+                      {filterByDate === 'processing_date' ? 'Processing Date' : 'Issue Date'}
+                    </Text>
+                    <Ionicons name="chevron-down" size={18} color={colors.text.secondary} />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Status Dropdown */}
+                <View style={styles.filterDropdownWrapper}>
+                  <Text style={[styles.filterLabel, { color: colors.text.secondary }]}>
+                    Status
                   </Text>
-                </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.filterDropdown, { backgroundColor: colors.background.DEFAULT, borderColor: colors.border.DEFAULT }]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setShowStatusDropdown(true);
+                    }}
+                    activeOpacity={0.7}>
+                    <Text style={[styles.filterDropdownText, { color: colors.text.primary }]}>
+                      {statusOptions.find(opt => opt.value === selectedStatus)?.label || 'All'}
+                    </Text>
+                    <Ionicons name="chevron-down" size={18} color={colors.text.secondary} />
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
 
             {/* Date Range Section */}
-            <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>
+            <View style={[styles.section, { marginBottom: 0 }]}>
+              {/* <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>
                 Date Range
-              </Text>
+              </Text> */}
               <View style={styles.dateInputRow}>
                 <View style={styles.dateInputWrapper}>
                   <Text style={[styles.dateLabel, { color: colors.text.secondary }]}>
@@ -522,45 +509,134 @@ export default function FilterBottomSheet({
               </View>
             </View>
 
-            {/* Status Filter Section */}
-            <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>
-                Status
-              </Text>
-              <View style={styles.statusContainer}>
-                {statusOptions.map((option) => (
+          </ScrollView>
+          
+          {/* Date Type Dropdown Modal */}
+          {showDateTypeDropdown && (
+            <Modal
+              transparent
+              animationType="fade"
+              visible={showDateTypeDropdown}
+              onRequestClose={() => setShowDateTypeDropdown(false)}>
+              <TouchableOpacity
+                style={styles.dropdownOverlay}
+                activeOpacity={1}
+                onPress={() => setShowDateTypeDropdown(false)}>
+                <View style={[styles.dropdownMenu, { backgroundColor: colors.background.card, borderColor: colors.border.DEFAULT }]}>
                   <TouchableOpacity
-                    key={option.value || 'all'}
                     style={[
-                      styles.statusOption,
+                      styles.dropdownOption,
                       {
-                        backgroundColor: selectedStatus === option.value 
-                          ? colors.primary.DEFAULT 
-                          : colors.background.DEFAULT,
-                        borderColor: selectedStatus === option.value 
-                          ? colors.primary.DEFAULT 
-                          : colors.border.DEFAULT,
+                        backgroundColor: filterByDate === 'processing_date' 
+                          ? colors.primary.light + '20' 
+                          : 'transparent',
                       },
                     ]}
-                    onPress={() => onStatusChange(option.value)}
+                    onPress={() => {
+                      onFilterByDateChange('processing_date');
+                      setShowDateTypeDropdown(false);
+                    }}
                     activeOpacity={0.7}>
                     <Text
                       style={[
-                        styles.statusText,
+                        styles.dropdownOptionText,
                         {
-                          color: selectedStatus === option.value 
-                            ? '#ffffff' 
+                          color: filterByDate === 'processing_date' 
+                            ? colors.primary.DEFAULT 
                             : colors.text.primary,
+                          fontWeight: filterByDate === 'processing_date' ? '600' : '400',
                         },
                       ]}>
-                      {option.label}
+                      Processing Date
                     </Text>
+                    {filterByDate === 'processing_date' && (
+                      <Ionicons name="checkmark" size={20} color={colors.primary.DEFAULT} />
+                    )}
                   </TouchableOpacity>
-                ))}
-              </View>
-            </View>
+                  <TouchableOpacity
+                    style={[
+                      styles.dropdownOption,
+                      {
+                        backgroundColor: filterByDate === 'issue_date' 
+                          ? colors.primary.light + '20' 
+                          : 'transparent',
+                      },
+                    ]}
+                    onPress={() => {
+                      onFilterByDateChange('issue_date');
+                      setShowDateTypeDropdown(false);
+                    }}
+                    activeOpacity={0.7}>
+                    <Text
+                      style={[
+                        styles.dropdownOptionText,
+                        {
+                          color: filterByDate === 'issue_date' 
+                            ? colors.primary.DEFAULT 
+                            : colors.text.primary,
+                          fontWeight: filterByDate === 'issue_date' ? '600' : '400',
+                        },
+                      ]}>
+                      Issue Date
+                    </Text>
+                    {filterByDate === 'issue_date' && (
+                      <Ionicons name="checkmark" size={20} color={colors.primary.DEFAULT} />
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </TouchableOpacity>
+            </Modal>
+          )}
 
-          </ScrollView>
+          {/* Status Dropdown Modal */}
+          {showStatusDropdown && (
+            <Modal
+              transparent
+              animationType="fade"
+              visible={showStatusDropdown}
+              onRequestClose={() => setShowStatusDropdown(false)}>
+              <TouchableOpacity
+                style={styles.dropdownOverlay}
+                activeOpacity={1}
+                onPress={() => setShowStatusDropdown(false)}>
+                <View style={[styles.dropdownMenu, { backgroundColor: colors.background.card, borderColor: colors.border.DEFAULT }]}>
+                  {statusOptions.map((option) => (
+                    <TouchableOpacity
+                      key={option.value || 'all'}
+                      style={[
+                        styles.dropdownOption,
+                        {
+                          backgroundColor: selectedStatus === option.value 
+                            ? colors.primary.light + '20' 
+                            : 'transparent',
+                        },
+                      ]}
+                      onPress={() => {
+                        onStatusChange(option.value);
+                        setShowStatusDropdown(false);
+                      }}
+                      activeOpacity={0.7}>
+                      <Text
+                        style={[
+                          styles.dropdownOptionText,
+                          {
+                            color: selectedStatus === option.value 
+                              ? colors.primary.DEFAULT 
+                              : colors.text.primary,
+                            fontWeight: selectedStatus === option.value ? '600' : '400',
+                          },
+                        ]}>
+                        {option.label}
+                      </Text>
+                      {selectedStatus === option.value && (
+                        <Ionicons name="checkmark" size={20} color={colors.primary.DEFAULT} />
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </TouchableOpacity>
+            </Modal>
+          )}
           
           {/* Action Buttons - Fixed at bottom */}
           <View style={[
@@ -590,6 +666,133 @@ export default function FilterBottomSheet({
           </View>
         </SafeAreaView>
       </Animated.View>
+
+      {/* Date Type Dropdown Modal */}
+      {showDateTypeDropdown && (
+        <Modal
+          transparent
+          animationType="fade"
+          visible={showDateTypeDropdown}
+          onRequestClose={() => setShowDateTypeDropdown(false)}>
+          <TouchableOpacity
+            style={styles.dropdownOverlay}
+            activeOpacity={1}
+            onPress={() => setShowDateTypeDropdown(false)}>
+            <View style={[styles.dropdownMenu, { backgroundColor: colors.background.card, borderColor: colors.border.DEFAULT }]}>
+              <TouchableOpacity
+                style={[
+                  styles.dropdownOption,
+                  {
+                    backgroundColor: filterByDate === 'processing_date' 
+                      ? colors.primary.light + '20' 
+                      : 'transparent',
+                  },
+                ]}
+                onPress={() => {
+                  onFilterByDateChange('processing_date');
+                  setShowDateTypeDropdown(false);
+                }}
+                activeOpacity={0.7}>
+                <Text
+                  style={[
+                    styles.dropdownOptionText,
+                    {
+                      color: filterByDate === 'processing_date' 
+                        ? colors.primary.DEFAULT 
+                        : colors.text.primary,
+                      fontWeight: filterByDate === 'processing_date' ? '600' : '400',
+                    },
+                  ]}>
+                  Processing Date
+                </Text>
+                {filterByDate === 'processing_date' && (
+                  <Ionicons name="checkmark" size={20} color={colors.primary.DEFAULT} />
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.dropdownOption,
+                  {
+                    backgroundColor: filterByDate === 'issue_date' 
+                      ? colors.primary.light + '20' 
+                      : 'transparent',
+                  },
+                ]}
+                onPress={() => {
+                  onFilterByDateChange('issue_date');
+                  setShowDateTypeDropdown(false);
+                }}
+                activeOpacity={0.7}>
+                <Text
+                  style={[
+                    styles.dropdownOptionText,
+                    {
+                      color: filterByDate === 'issue_date' 
+                        ? colors.primary.DEFAULT 
+                        : colors.text.primary,
+                      fontWeight: filterByDate === 'issue_date' ? '600' : '400',
+                    },
+                  ]}>
+                  Issue Date
+                </Text>
+                {filterByDate === 'issue_date' && (
+                  <Ionicons name="checkmark" size={20} color={colors.primary.DEFAULT} />
+                )}
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </Modal>
+      )}
+
+      {/* Status Dropdown Modal */}
+      {showStatusDropdown && (
+        <Modal
+          transparent
+          animationType="fade"
+          visible={showStatusDropdown}
+          onRequestClose={() => setShowStatusDropdown(false)}>
+          <TouchableOpacity
+            style={styles.dropdownOverlay}
+            activeOpacity={1}
+            onPress={() => setShowStatusDropdown(false)}>
+            <View style={[styles.dropdownMenu, { backgroundColor: colors.background.card, borderColor: colors.border.DEFAULT }]}>
+              {statusOptions.map((option) => (
+                <TouchableOpacity
+                  key={option.value || 'all'}
+                  style={[
+                    styles.dropdownOption,
+                    {
+                      backgroundColor: selectedStatus === option.value 
+                        ? colors.primary.light + '20' 
+                        : 'transparent',
+                    },
+                  ]}
+                  onPress={() => {
+                    onStatusChange(option.value);
+                    setShowStatusDropdown(false);
+                  }}
+                  activeOpacity={0.7}>
+                  <Text
+                    style={[
+                      styles.dropdownOptionText,
+                      {
+                        color: selectedStatus === option.value 
+                          ? colors.primary.DEFAULT 
+                          : colors.text.primary,
+                        fontWeight: selectedStatus === option.value ? '600' : '400',
+                      },
+                    ]}>
+                    {option.label}
+                  </Text>
+                  {selectedStatus === option.value && (
+                    <Ionicons name="checkmark" size={20} color={colors.primary.DEFAULT} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </TouchableOpacity>
+        </Modal>
+      )}
     </Modal>
   );
 }
@@ -655,10 +858,10 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   contentContainer: {
-    paddingBottom: 20,
+    paddingBottom: 8,
   },
   section: {
-    marginBottom: 24,
+    marginBottom: 16,
   },
   sectionTitle: {
     fontSize: 16,
@@ -669,7 +872,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 5,
+    marginTop: 4,
     borderRadius: 12,
     borderWidth: 1,
     gap: 12,
@@ -678,21 +882,58 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
   },
-  dateTypeContainer: {
+  filtersRow: {
     flexDirection: 'row',
     gap: 12,
   },
-  dateTypeOption: {
+  filterDropdownWrapper: {
     flex: 1,
+    gap: 8,
+  },
+  filterLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  filterDropdown: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
     paddingVertical: 12,
-    paddingHorizontal: 16,
     borderRadius: 12,
     borderWidth: 1,
-    alignItems: 'center',
+    minHeight: 48,
   },
-  dateTypeText: {
+  filterDropdownText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '500',
+    flex: 1,
+  },
+  dropdownOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    padding: 20,
+  },
+  dropdownMenu: {
+    width: '100%',
+    maxWidth: 300,
+    borderRadius: 12,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  dropdownOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  dropdownOptionText: {
+    fontSize: 15,
   },
   dateInputRow: {
     flexDirection: 'row',
