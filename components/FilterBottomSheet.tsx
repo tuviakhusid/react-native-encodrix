@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Haptics from 'expo-haptics';
 import { Calendar, Filter, Search, X } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
@@ -15,8 +16,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getColors } from '../src/constants/theme';
 import { useTheme } from '../src/context/theme-context';
 
@@ -66,6 +66,7 @@ export default function FilterBottomSheet({
 }: FilterBottomSheetProps) {
   const { theme } = useTheme();
   const colors = getColors(theme);
+  const insets = useSafeAreaInsets();
   const translateY = useRef(new Animated.Value(BOTTOM_SHEET_MAX_HEIGHT)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   const [showFromDatePicker, setShowFromDatePicker] = useState(false);
@@ -562,7 +563,14 @@ export default function FilterBottomSheet({
           </ScrollView>
           
           {/* Action Buttons - Fixed at bottom */}
-          <View style={[styles.actionsContainer, { borderTopColor: colors.border.DEFAULT, backgroundColor: colors.background.card }]}>
+          <View style={[
+            styles.actionsContainer, 
+            { 
+              borderTopColor: colors.border.DEFAULT, 
+              backgroundColor: colors.background.card,
+              paddingBottom: Math.max(insets.bottom, 20), // Ensure proper spacing for navigation bar
+            }
+          ]}>
             <View style={styles.actions}>
               <TouchableOpacity
                 style={[styles.resetButton, { borderColor: colors.border.DEFAULT }]}
