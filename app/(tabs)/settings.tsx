@@ -220,6 +220,7 @@ export default function SettingsScreen() {
     >
       <ScrollView
         style={styles.scrollView}
+        contentContainerStyle={{ paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>

@@ -589,6 +589,7 @@ export default function UploadScreen() {
       style={[styles.container, { backgroundColor: colors.background.DEFAULT }]}>
       <ScrollView
         style={styles.scrollView}
+        contentContainerStyle={{ paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
@@ -1262,11 +1263,6 @@ const getStyles = (colors: ReturnType<typeof getColors>) =>
     section: {
       paddingHorizontal: 20,
       marginBottom: 24,
-    },
-    sectionTitle: {
-      fontSize: 20,
-      fontWeight: "700",
-      marginBottom: 16,
     },
     featuresContainer: {
       gap: 12,

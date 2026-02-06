@@ -373,6 +373,7 @@ export default function CostManagerScreen() {
 
       <ScrollView
         style={styles.scrollView}
+        contentContainerStyle={{ paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
       >
         {activeTab === "cost-manager"

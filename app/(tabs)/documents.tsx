@@ -494,7 +494,7 @@ const getStyles = (colors: ReturnType<typeof getColors>) =>
     },
     listContent: {
       paddingHorizontal: 20,
-      paddingBottom: 20,
+      paddingBottom: 100,
     },
     documentItem: {
       borderRadius: borderRadius.lg,

@@ -4,6 +4,7 @@ import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import {
   ArrowRight,
+  Bell,
   CheckCircle2,
   Clock,
   Eye,
@@ -11,8 +12,7 @@ import {
   Filter,
   Moon,
   Sun,
-  Trash2,
-  Bell
+  Trash2
 } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
@@ -26,10 +26,16 @@ import {
   TouchableOpacity,
   View
 } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming
+} from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import FilterBottomSheet from "../../components/FilterBottomSheet";
-import ProfileBottomSheet from "../../components/ProfileBottomSheet";
 import NotificationDrawer from "../../components/NotificationDrawer";
+import ProfileBottomSheet from "../../components/ProfileBottomSheet";
 import {
   borderRadius,
   getColors,
@@ -137,6 +143,15 @@ interface Document {
   issueDate?: string;
 }
 
+type Notification = {
+  id: string;
+  title: string;
+  message: string;
+  type: "email" | "approval" | "message" | "comment" | "share";
+  isSeen: boolean;
+  createdAt: string;
+};
+
 function StatCard({
   title,
   value,
@@ -162,6 +177,135 @@ function StatCard({
     </View>
   );
 }
+
+// Skeleton Components for Loading State
+function SkeletonPulse({ style, colors }: { style?: any; colors: ReturnType<typeof getColors> }) {
+  const opacity = useSharedValue(0.3);
+
+  useEffect(() => {
+    opacity.value = withRepeat(
+      withTiming(1, { duration: 800 }),
+      -1,
+      true
+    );
+  }, []);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+  }));
+
+  return (
+    <Animated.View
+      style={[
+        { backgroundColor: colors.border.DEFAULT, borderRadius: 8 },
+        style,
+        animatedStyle,
+      ]}
+    />
+  );
+}
+
+function SkeletonStatCard({ colors }: { colors: ReturnType<typeof getColors> }) {
+  return (
+    <View style={[statCardStyles.statCard, { backgroundColor: colors.background.gray }]}>
+      <SkeletonPulse colors={colors} style={{ width: 40, height: 40, borderRadius: 12, marginBottom: 8 }} />
+      <SkeletonPulse colors={colors} style={{ width: 50, height: 28, marginBottom: 8 }} />
+      <SkeletonPulse colors={colors} style={{ width: 70, height: 14 }} />
+    </View>
+  );
+}
+
+function SkeletonInvoiceCard({ colors }: { colors: ReturnType<typeof getColors> }) {
+  return (
+    <View
+      style={[
+        skeletonStyles.invoiceCard,
+        { backgroundColor: colors.background.card, borderColor: colors.border.DEFAULT },
+      ]}
+    >
+      <View style={skeletonStyles.invoiceContent}>
+        <View style={skeletonStyles.invoiceLeft}>
+          <SkeletonPulse colors={colors} style={{ width: "80%", height: 18, marginBottom: 10 }} />
+          <SkeletonPulse colors={colors} style={{ width: "60%", height: 14, marginBottom: 8 }} />
+          <SkeletonPulse colors={colors} style={{ width: "40%", height: 12, marginBottom: 12 }} />
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            <SkeletonPulse colors={colors} style={{ width: 60, height: 24, borderRadius: 6 }} />
+            <SkeletonPulse colors={colors} style={{ width: 70, height: 24, borderRadius: 6 }} />
+          </View>
+        </View>
+        <View style={skeletonStyles.invoiceRight}>
+          <SkeletonPulse colors={colors} style={{ width: 44, height: 44, borderRadius: 12, marginBottom: 8 }} />
+          <SkeletonPulse colors={colors} style={{ width: 44, height: 44, borderRadius: 12 }} />
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function DashboardSkeleton({ colors }: { colors: ReturnType<typeof getColors> }) {
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.DEFAULT }}>
+      <View style={{ flex: 1, padding: 20 }}>
+        {/* Header Skeleton */}
+        <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 24 }}>
+          <View>
+            <SkeletonPulse colors={colors} style={{ width: 120, height: 16, marginBottom: 8 }} />
+            <SkeletonPulse colors={colors} style={{ width: 160, height: 28 }} />
+          </View>
+          <View style={{ flexDirection: "row", gap: 12 }}>
+            <SkeletonPulse colors={colors} style={{ width: 44, height: 44, borderRadius: 12 }} />
+            <SkeletonPulse colors={colors} style={{ width: 44, height: 44, borderRadius: 12 }} />
+            <SkeletonPulse colors={colors} style={{ width: 44, height: 44, borderRadius: 12 }} />
+          </View>
+        </View>
+
+        {/* Stats Skeleton */}
+        <View style={{ flexDirection: "row", gap: 12, marginBottom: 32 }}>
+          <SkeletonStatCard colors={colors} />
+          <SkeletonStatCard colors={colors} />
+          <SkeletonStatCard colors={colors} />
+        </View>
+
+        {/* Section Header */}
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <SkeletonPulse colors={colors} style={{ width: 140, height: 24 }} />
+          <SkeletonPulse colors={colors} style={{ width: 80, height: 36, borderRadius: 20 }} />
+        </View>
+
+        {/* Invoice Cards Skeleton */}
+        <View style={{ gap: 12 }}>
+          <SkeletonInvoiceCard colors={colors} />
+          <SkeletonInvoiceCard colors={colors} />
+          <SkeletonInvoiceCard colors={colors} />
+        </View>
+      </View>
+    </SafeAreaView>
+  );
+}
+
+const skeletonStyles = StyleSheet.create({
+  invoiceCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  invoiceContent: {
+    flexDirection: "row",
+    padding: 16,
+    minHeight: 120,
+  },
+  invoiceLeft: {
+    flex: 1,
+    marginRight: 12,
+  },
+  invoiceRight: {
+    justifyContent: "flex-start",
+    alignItems: "center",
+    paddingLeft: 12,
+    borderLeftWidth: 1,
+    borderLeftColor: "#e2e8f0",
+  },
+});
 
 // Helper function to get date string in YYYY-MM-DD format
 const formatDateForQuery = (date: Date): string => {
@@ -541,6 +685,7 @@ export default function DashboardScreen() {
           documentId: item.id,
           s3Url: item.s3Urls?.[0] || "",
           fileFormat: item.fileFormat || "",
+          workflowDocumentInstanceId: item.workflowDocumentInstanceId || "",
         },
       });
     }
@@ -548,6 +693,10 @@ export default function DashboardScreen() {
 
   const allDocuments = data?.documentsByStatus?.documents || [];
   const documents = filterDocuments(allDocuments, selectedFilter);
+
+  // Notification data - will be replaced with actual query when available
+  const notifications: Notification[] = [];
+  const unreadNotificationCount = notifications.filter((n) => !n.isSeen).length;
 
   const renderDocumentItem = ({ item }: { item: Document }) => {
     const statusColors = getStatusColor(item.workflowStatus || "pending");
@@ -676,11 +825,7 @@ export default function DashboardScreen() {
   const isRefetching = networkStatus === 4 || networkStatus === 3;
 
   if (isInitialLoading) {
-    return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
-      </View>
-    );
+    return <DashboardSkeleton colors={colors} />;
   }
 
   if (error) {
@@ -710,6 +855,7 @@ export default function DashboardScreen() {
       style={[styles.container, { backgroundColor: colors.background.DEFAULT }]}>
       <ScrollView
         style={styles.scrollView}
+        contentContainerStyle={{ paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -755,6 +901,14 @@ export default function DashboardScreen() {
               }}
               activeOpacity={0.6}>
               <Bell size={20} color={colors.primary.DEFAULT} strokeWidth={2.5} />
+              {/* Notification Badge */}
+              {unreadNotificationCount > 0 && (
+                <View style={[styles.notificationBadge, { backgroundColor: colors.status.rejected }]}>
+                  <Text style={styles.notificationBadgeText}>
+                    {unreadNotificationCount > 99 ? "99+" : unreadNotificationCount.toString()}
+                  </Text>
+                </View>
+              )}
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -899,7 +1053,7 @@ export default function DashboardScreen() {
       <NotificationDrawer
         open={showNotificationDrawer}
         onClose={() => setShowNotificationDrawer(false)}
-        notifications={[]}
+        notifications={notifications}
         loading={false}
         onNotificationPress={(notificationId) => {
           // Handle notification press
@@ -987,6 +1141,23 @@ const getStyles = (colors: ReturnType<typeof getColors>) =>
       alignItems: "center",
       justifyContent: "center",
       borderWidth: 1,
+      position: "relative",
+    },
+    notificationBadge: {
+      position: "absolute",
+      top: -4,
+      right: -4,
+      minWidth: 18,
+      height: 18,
+      borderRadius: 9,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 4,
+    },
+    notificationBadgeText: {
+      color: "#ffffff",
+      fontSize: 10,
+      fontWeight: "700",
     },
     profileButton: {
       width: 44,

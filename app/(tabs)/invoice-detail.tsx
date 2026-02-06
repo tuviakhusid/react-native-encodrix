@@ -6,7 +6,6 @@ import { CheckCircle2, Trash2, XCircle } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Dimensions,
   Image,
   Modal,
@@ -19,6 +18,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
+import AccountSelector from "../../components/AccountSelector";
+import CustomAlert from "../../components/CustomAlert";
 import {
   borderRadius,
   getColors,
@@ -27,6 +28,7 @@ import {
   typography,
 } from "../../src/constants/theme";
 import { useTheme } from "../../src/context/theme-context";
+import { useCustomAlert } from "../../src/hooks/useCustomAlert";
 import invoiceService from "../../src/lib/services/invoice.service";
 import uploadService from "../../src/lib/services/upload.service";
 
@@ -44,6 +46,12 @@ const DELETE_DOCUMENT = gql`
       error
       message
     }
+  }
+`;
+
+const UPDATE_EXTRACTED_DATA_MUTATION = gql`
+  mutation UpdateExtractedData($fileId: String!, $input: JSON!) {
+    updateExtractedData(fileId: $fileId, input: $input)
   }
 `;
 
@@ -97,6 +105,7 @@ export default function InvoiceDetailScreen() {
   const documentId = params.documentId as string;
   const s3Url = params.s3Url as string;
   const fileFormat = params.fileFormat as string;
+  const workflowDocumentInstanceId = params.workflowDocumentInstanceId as string;
   const [extractedData, setExtractedData] = useState<ExtractedData | null>(
     null
   );
@@ -112,6 +121,16 @@ export default function InvoiceDetailScreen() {
   const [rejectionReason, setRejectionReason] = useState("");
   const [isOnHold, setIsOnHold] = useState(false);
   const [comment, setComment] = useState("");
+  const { alertState, showError, showSuccess, showWarning, hideAlert } = useCustomAlert();
+  
+  // Line item mapping state
+  const [lineItemMappings, setLineItemMappings] = useState<Map<number, {
+    selectedAccountId?: string;
+    predictions?: any[];
+    originalItem?: any;
+  }>>(new Map());
+  const [isSavingMappings, setIsSavingMappings] = useState(false);
+  const [hasUnsavedMappings, setHasUnsavedMappings] = useState(false);
 
   const {
     data,
@@ -140,11 +159,45 @@ export default function InvoiceDetailScreen() {
   const isTrialExpired = userData?.getMyProfile?.trialDaysRemaining === 0 || userData?.getMyProfile?.isTrialExpired;
 
   const [deleteDocument, { loading: deleting }] = useMutation(DELETE_DOCUMENT);
+  const [updateExtractedData] = useMutation(UPDATE_EXTRACTED_DATA_MUTATION);
 
   useEffect(() => {
     if (data?.getExractedData) {
-      setExtractedData(data.getExractedData);
+      const extracted = data.getExractedData;
+      setExtractedData(extracted);
       setLoading(false);
+      
+      // Initialize line item mappings from extracted data
+      if (extracted?.extracted_data) {
+        const dataObj = extracted.extracted_data;
+        const lineItemFields = Object.keys(dataObj).filter(
+          (key) =>
+            key.toLowerCase().includes("line") &&
+            Array.isArray(dataObj[key]) &&
+            !key.toLowerCase().includes("general")
+        );
+        
+        const items = lineItemFields.length > 0 
+          ? dataObj[lineItemFields[0]]
+          : (dataObj.line_items || []);
+        
+        const newMappings = new Map<number, {
+          selectedAccountId?: string;
+          predictions?: any[];
+          originalItem?: any;
+        }>();
+        
+        items.forEach((item: any, index: number) => {
+          newMappings.set(index, {
+            selectedAccountId: item.selectedAccountId,
+            predictions: item.predictions || [],
+            originalItem: item,
+          });
+        });
+        
+        setLineItemMappings(newMappings);
+        setHasUnsavedMappings(false);
+      }
     } else if (error) {
       setLoading(false);
     }
@@ -293,10 +346,128 @@ export default function InvoiceDetailScreen() {
     setShowLineItemModal(true);
   };
 
+  const getLineItemIndex = (item: any): number => {
+    return lineItems.findIndex((li: any) => {
+      // Try to match by key fields
+      if (item.id && li.id) return item.id === li.id;
+      if (item._id && li._id) return item._id === li._id;
+      // Fallback to description match
+      const itemDesc = item.description || item.item_description || item.name;
+      const liDesc = li.description || li.item_description || li.name;
+      return itemDesc && liDesc && itemDesc === liDesc;
+    });
+  };
+
+  const handleAccountSelection = (lineItemIndex: number, accountId: string) => {
+    const currentMapping = lineItemMappings.get(lineItemIndex);
+    if (!currentMapping) return;
+
+    const newMappings = new Map(lineItemMappings);
+    newMappings.set(lineItemIndex, {
+      ...currentMapping,
+      selectedAccountId: accountId,
+    });
+
+    setLineItemMappings(newMappings);
+    setHasUnsavedMappings(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const handleSaveLineItemMappings = async () => {
+    if (isTrialExpired) {
+      showWarning(
+        "Trial Expired",
+        "Your free trial has expired. Please subscribe to continue managing invoices."
+      );
+      return;
+    }
+
+    setIsSavingMappings(true);
+    try {
+      const dataObj = extractedData?.extracted_data;
+      if (!dataObj) {
+        showError("Error", "No extracted data available");
+        return;
+      }
+
+      // Find the line items field
+      const lineItemFields = Object.keys(dataObj).filter(
+        (key) =>
+          key.toLowerCase().includes("line") &&
+          Array.isArray(dataObj[key]) &&
+          !key.toLowerCase().includes("general")
+      );
+
+      const lineItemsField = lineItemFields.length > 0 
+        ? lineItemFields[0]
+        : "line_items";
+
+      const updatedLineItems = (dataObj[lineItemsField] || []).map((item: any, index: number) => {
+        const mapping = lineItemMappings.get(index);
+        if (!mapping) return item;
+
+        const updatedItem = { ...item };
+        
+        // Update selectedAccountId
+        if (mapping.selectedAccountId) {
+          updatedItem.selectedAccountId = mapping.selectedAccountId;
+        }
+
+        // Update predictions with is_confirmed flags
+        if (mapping.predictions && Array.isArray(mapping.predictions)) {
+          updatedItem.predictions = mapping.predictions.map((pred: any) => ({
+            ...pred,
+            is_confirmed: pred.account_id === mapping.selectedAccountId,
+          }));
+        }
+
+        return updatedItem;
+      });
+
+      const updatedData = {
+        ...dataObj,
+        [lineItemsField]: updatedLineItems,
+      };
+
+      const { data: updateData } = await updateExtractedData({
+        variables: {
+          fileId: invoiceDataId,
+          input: { extracted_data: updatedData },
+        },
+      });
+
+      if (updateData?.updateExtractedData) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        showSuccess("Success", "Line item mappings saved successfully");
+        setHasUnsavedMappings(false);
+        
+        // Refetch data to get updated state
+        await refetch();
+      } else {
+        showError("Error", "Failed to save line item mappings");
+      }
+    } catch (error: any) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      showError("Error", error.message || "Something went wrong while saving mappings");
+    } finally {
+      setIsSavingMappings(false);
+    }
+  };
+
   const getWorkflowInstanceId = (): string | null => {
-    return extractedData?.workflow_instance_id || 
-           extractedData?.instance_id || 
-           null;
+    // First, try to use the instance ID passed from dashboard
+    if (workflowDocumentInstanceId) {
+      console.log("getWorkflowInstanceId - Using passed workflowDocumentInstanceId:", workflowDocumentInstanceId);
+      return workflowDocumentInstanceId;
+    }
+    
+    // Fall back to extracted data
+    const workflowInstanceId = extractedData?.workflow_instance_id;
+    const instanceId = extractedData?.instance_id;
+    console.log("getWorkflowInstanceId - workflow_instance_id:", workflowInstanceId);
+    console.log("getWorkflowInstanceId - instance_id:", instanceId);
+    
+    return workflowInstanceId || instanceId || null;
   };
 
   const getProceedButtonLabel = (): string => {
@@ -342,7 +513,7 @@ export default function InvoiceDetailScreen() {
 
   const handleProceed = async () => {
     if (isTrialExpired) {
-      Alert.alert(
+      showWarning(
         "Trial Expired",
         "Your free trial has expired. Please subscribe to continue processing invoices."
       );
@@ -350,7 +521,7 @@ export default function InvoiceDetailScreen() {
     }
     const instanceId = getWorkflowInstanceId();
     if (!instanceId) {
-      Alert.alert("Error", "Workflow instance ID is not available");
+      showError("Error", "Workflow instance ID is not available");
       return;
     }
 
@@ -368,12 +539,13 @@ export default function InvoiceDetailScreen() {
       );
 
       if (!response?.ok) {
-        Alert.alert("Error", response?.error || "Unknown error");
+        showError("Error", response?.error || "Unknown error");
+        setIsProcessing(false);
         return;
       }
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert(
+      showSuccess(
         "Success",
         isOnHold 
           ? "Document marked as On Hold successfully"
@@ -395,7 +567,7 @@ export default function InvoiceDetailScreen() {
       );
     } catch (error: any) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert("Error", error.message || "Something went wrong while processing the action");
+      showError("Error", error.message || "Something went wrong while processing the action");
     } finally {
       setIsProcessing(false);
     }
@@ -407,13 +579,13 @@ export default function InvoiceDetailScreen() {
 
   const confirmReject = async () => {
     if (!rejectionReason.trim()) {
-      Alert.alert("Error", "Please provide a reason for rejection");
+      showError("Error", "Please provide a reason for rejection");
       return;
     }
 
     const instanceId = getWorkflowInstanceId();
     if (!instanceId) {
-      Alert.alert("Error", "Workflow instance ID is not available");
+      showError("Error", "Workflow instance ID is not available");
       setShowRejectDialog(false);
       setRejectionReason("");
       return;
@@ -429,12 +601,13 @@ export default function InvoiceDetailScreen() {
       );
 
       if (!response?.ok) {
-        Alert.alert("Error", response?.error || "Unknown error");
+        showError("Error", response?.error || "Unknown error");
+        setIsProcessing(false);
         return;
       }
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert(
+      showSuccess(
         "Success",
         "Document rejected successfully",
         [
@@ -454,7 +627,7 @@ export default function InvoiceDetailScreen() {
       );
     } catch (error: any) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert("Error", error.message || "Something went wrong while rejecting the document");
+      showError("Error", error.message || "Something went wrong while rejecting the document");
     } finally {
       setIsProcessing(false);
     }
@@ -467,19 +640,32 @@ export default function InvoiceDetailScreen() {
 
   const shouldShowActionButtons = (): boolean => {
     const instanceId = getWorkflowInstanceId();
-    if (!instanceId) return false;
-
-    const documentStatus = extractedData?.document_status;
-    if (documentStatus === "rejected" || documentStatus === "completed" || documentStatus === "on_hold") {
+    console.log("=== shouldShowActionButtons Debug ===");
+    console.log("Instance ID:", instanceId);
+    console.log("Extracted Data:", JSON.stringify(extractedData, null, 2));
+    
+    if (!instanceId) {
+      console.log("❌ No instance ID found - returning false");
       return false;
     }
 
+    const documentStatus = extractedData?.document_status;
+    const workflowStatus = extractedData?.workflow_status;
+    console.log("Document Status:", documentStatus);
+    console.log("Workflow Status:", workflowStatus);
+    
+    if (documentStatus === "rejected" || documentStatus === "completed" || documentStatus === "on_hold") {
+      console.log("❌ Document status prevents showing buttons:", documentStatus);
+      return false;
+    }
+
+    console.log("✅ Showing action buttons");
     return true;
   };
 
   const handleDeleteDocument = async () => {
     if (isTrialExpired) {
-      Alert.alert(
+      showWarning(
         "Trial Expired",
         "Your free trial has expired. Please subscribe to continue managing invoices."
       );
@@ -491,7 +677,7 @@ export default function InvoiceDetailScreen() {
                          extractedData?.extracted_data?.vendor_name || 
                          "this document";
     
-    Alert.alert(
+    showWarning(
       "Delete Document",
       `Are you sure you want to delete "${documentName}"? This action cannot be undone.`,
       [
@@ -506,7 +692,7 @@ export default function InvoiceDetailScreen() {
             try {
               const docId = documentId || invoiceDataId;
               if (!docId) {
-                Alert.alert("Error", "Document ID is not available");
+                showError("Error", "Document ID is not available");
                 return;
               }
 
@@ -519,7 +705,7 @@ export default function InvoiceDetailScreen() {
 
               if (deleteData?.deleteDocument?.ok) {
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                Alert.alert("Success", "Document deleted successfully", [
+                showSuccess("Success", "Document deleted successfully", [
                   {
                     text: "OK",
                     onPress: () => router.back(),
@@ -527,14 +713,14 @@ export default function InvoiceDetailScreen() {
                 ]);
               } else {
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-                Alert.alert(
+                showError(
                   "Error",
                   deleteData?.deleteDocument?.message || "Failed to delete document"
                 );
               }
             } catch (err: any) {
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-              Alert.alert("Error", err.message || "Failed to delete document");
+              showError("Error", err.message || "Failed to delete document");
             }
           },
         },
@@ -546,7 +732,7 @@ export default function InvoiceDetailScreen() {
     const file_id = fileId || documentId || invoiceDataId;
 
     if (!file_id) {
-      Alert.alert("Error", "File ID is not available");
+      showError("Error", "File ID is not available");
       return;
     }
 
@@ -559,7 +745,7 @@ export default function InvoiceDetailScreen() {
       setLoadingDocument(true);
       const url = await invoiceService.getStreamingUrl(file_id);
       if (!url) {
-        Alert.alert("Error", "Unable to generate file URL");
+        showError("Error", "Unable to generate file URL");
         setLoadingDocument(false);
         return;
       }
@@ -599,7 +785,7 @@ export default function InvoiceDetailScreen() {
       setShowDocumentPreview(true);
       setLoadingDocument(false);
     } catch (error) {
-      Alert.alert("Error", "Failed to load file. Please try again.");
+      showError("Error", "Failed to load file. Please try again.");
       setLoadingDocument(false);
     }
   };
@@ -823,39 +1009,57 @@ export default function InvoiceDetailScreen() {
             </Text>
 
             <View style={styles.lineItemsList}>
-              {lineItems.map((item: any, index: number) => (
-                <TouchableOpacity
-                  key={index}
-                  style={[
-                    styles.lineItemCard,
-                    {
-                      backgroundColor: colors.background.DEFAULT,
-                      borderColor: colors.border.DEFAULT,
-                    },
-                  ]}
-                  onPress={() => handleLineItemPress(item)}
-                  activeOpacity={0.7}>
-                  <View style={styles.lineItemCardContent}>
-                    <View style={styles.lineItemCardLeft}>
-                      <View style={[styles.lineItemNumberBadge, { backgroundColor: colors.primary.DEFAULT }]}>
-                        <Text style={styles.lineItemNumberText}>
-                          {index + 1}
-                        </Text>
+              {lineItems.map((item: any, index: number) => {
+                const mapping = lineItemMappings.get(index);
+                const isMapped = !!(mapping?.selectedAccountId || item.selectedAccountId);
+                
+                return (
+                  <TouchableOpacity
+                    key={index}
+                    style={[
+                      styles.lineItemCard,
+                      {
+                        backgroundColor: colors.background.DEFAULT,
+                        borderColor: isMapped 
+                          ? colors.stats.green.text 
+                          : colors.border.DEFAULT,
+                        borderWidth: isMapped ? 2 : 1,
+                      },
+                    ]}
+                    onPress={() => handleLineItemPress(item)}
+                    activeOpacity={0.7}>
+                    <View style={styles.lineItemCardContent}>
+                      <View style={styles.lineItemCardLeft}>
+                        <View style={[styles.lineItemNumberBadge, { backgroundColor: colors.primary.DEFAULT }]}>
+                          <Text style={styles.lineItemNumberText}>
+                            {index + 1}
+                          </Text>
+                        </View>
+                        <View style={styles.lineItemTextContainer}>
+                          <Text
+                            style={[styles.lineItemCardText, { color: colors.text.primary }]}
+                            numberOfLines={2}>
+                            {getLineItemDisplayText(item)}
+                          </Text>
+                          {isMapped && (
+                            <View style={[styles.lineItemMappedBadge, { backgroundColor: colors.stats.green.bg }]}>
+                              <Ionicons name="checkmark-circle" size={12} color={colors.stats.green.text} />
+                              <Text style={[styles.lineItemMappedText, { color: colors.stats.green.text }]}>
+                                Mapped
+                              </Text>
+                            </View>
+                          )}
+                        </View>
                       </View>
-                      <Text
-                        style={[styles.lineItemCardText, { color: colors.text.primary }]}
-                        numberOfLines={2}>
-                        {getLineItemDisplayText(item)}
-                      </Text>
+                      <Ionicons
+                        name="chevron-forward"
+                        size={20}
+                        color={colors.text.secondary}
+                      />
                     </View>
-                    <Ionicons
-                      name="chevron-forward"
-                      size={20}
-                      color={colors.text.secondary}
-                    />
-                  </View>
-                </TouchableOpacity>
-              ))}
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
         )}
@@ -902,7 +1106,7 @@ export default function InvoiceDetailScreen() {
                     style={styles.documentImage}
                     resizeMode="contain"
                     onError={() => {
-                      Alert.alert("Error", "Unable to load image. The file may be corrupted or inaccessible.");
+                      showError("Error", "Unable to load image. The file may be corrupted or inaccessible.");
                       setShowDocumentPreview(false);
                     }}
                   />
@@ -928,7 +1132,7 @@ export default function InvoiceDetailScreen() {
                                        documentUrl?.includes('docs.google.com/viewer');
                       
                       if (isWordFile || isPdfFile) {
-                        Alert.alert(
+                        showWarning(
                           "Preview Unavailable",
                           `Unable to preview ${isPdfFile ? 'PDF' : 'Word'} document inline. Would you like to open it externally?`,
                           [
@@ -946,7 +1150,7 @@ export default function InvoiceDetailScreen() {
                           ]
                         );
                       } else {
-                        Alert.alert("Error", "Unable to display document. It may need to be downloaded.");
+                        showError("Error", "Unable to display document. It may need to be downloaded.");
                         setShowDocumentPreview(false);
                       }
                     }}
@@ -957,7 +1161,7 @@ export default function InvoiceDetailScreen() {
                       const isPdfFile = formatLower === 'pdf' || formatLower.includes('pdf');
                       
                       if (nativeEvent.statusCode === 403 || nativeEvent.statusCode === 401) {
-                        Alert.alert(
+                        showWarning(
                           "Authentication Required",
                           isPdfFile 
                             ? "This PDF requires authentication. The viewer service cannot access it. Opening externally..."
@@ -980,7 +1184,7 @@ export default function InvoiceDetailScreen() {
                         const isPdfFile = formatLower === 'pdf' || formatLower.includes('pdf');
                         const isWordFile = formatLower.match(/^(doc|docx)$/);
                         
-                        Alert.alert(
+                        showError(
                           "Preview Error",
                           `Unable to load ${isPdfFile ? 'PDF' : isWordFile ? 'Word document' : 'document'}. Status: ${nativeEvent.statusCode}`,
                           [
@@ -1180,6 +1384,11 @@ export default function InvoiceDetailScreen() {
               bounces={true}>
               {selectedLineItem ? (
                 (() => {
+                  const lineItemIndex = getLineItemIndex(selectedLineItem);
+                  const mapping = lineItemMappings.get(lineItemIndex);
+                  const predictions = selectedLineItem.predictions || mapping?.predictions || [];
+                  const selectedAccountId = mapping?.selectedAccountId || selectedLineItem.selectedAccountId;
+                  
                   const excludedKeys = [
                     "predictions",
                     "error",
@@ -1205,42 +1414,99 @@ export default function InvoiceDetailScreen() {
                     }
                   );
 
-                  if (itemKeys.length === 0) {
-                    return (
-                      <View style={styles.modalEmptyContainer}>
-                        <Text style={[styles.modalEmptyText, { color: colors.text.secondary }]}>
-                          No data available for this line item
-                        </Text>
-                        <Text style={[styles.modalEmptyText, { color: colors.text.secondary, marginTop: 8, fontSize: 12 }]}>
-                          All keys: {allKeys.join(', ')}
-                        </Text>
-                      </View>
-                    );
-                  }
-
                   return (
                     <View>
-                      {itemKeys.map((key) => {
-                        const value = selectedLineItem[key];
+                      {/* Regular Line Item Fields */}
+                      {itemKeys.length > 0 && (
+                        <View style={styles.modalSection}>
+                          <Text style={[styles.modalSectionTitle, { color: colors.text.primary }]}>
+                            Item Information
+                          </Text>
+                          {itemKeys.map((key) => {
+                            const value = selectedLineItem[key];
 
-                        return (
-                          <View
-                            key={key}
+                            return (
+                              <View
+                                key={key}
+                                style={[
+                                  styles.modalFieldContainer,
+                                  { borderBottomColor: colors.border.light },
+                                ]}>
+                                <Text style={[styles.modalFieldLabel, { color: colors.text.secondary }]}>
+                                  {formatLabel(key)}
+                                </Text>
+                                <Text style={[styles.modalFieldValue, { color: colors.text.primary }]}>
+                                  {typeof value === "object" && value !== null
+                                    ? JSON.stringify(value, null, 2)
+                                    : String(value)}
+                                </Text>
+                              </View>
+                            );
+                          })}
+                        </View>
+                      )}
+
+                      {/* Finance Account Mapping Section */}
+                      <View style={[styles.modalSection, { marginTop: 24 }]}>
+                        <View style={styles.modalSectionHeader}>
+                          <Text style={[styles.modalSectionTitle, { color: colors.text.primary }]}>
+                            Finance Account Mapping
+                          </Text>
+                          {selectedAccountId && (
+                            <View style={[styles.mappedBadge, { backgroundColor: colors.stats.green.bg }]}>
+                              <Ionicons name="checkmark-circle" size={16} color={colors.stats.green.text} />
+                              <Text style={[styles.mappedBadgeText, { color: colors.stats.green.text }]}>
+                                Mapped
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text style={[styles.modalSectionSubtitle, { color: colors.text.secondary }]}>
+                          Select or search for a finance account for this line item
+                        </Text>
+
+                        <View style={styles.accountSelectorContainer}>
+                          <AccountSelector
+                            value={selectedAccountId || ''}
+                            onChange={(accountId, account) => {
+                              if (accountId) {
+                                handleAccountSelection(lineItemIndex, accountId);
+                              }
+                            }}
+                            predictions={predictions}
+                            placeholder="Search or select an account..."
+                          />
+                        </View>
+                      </View>
+
+                      {/* Save Button */}
+                      {hasUnsavedMappings && (
+                        <View style={styles.modalSaveContainer}>
+                          <TouchableOpacity
                             style={[
-                              styles.modalFieldContainer,
-                              { borderBottomColor: colors.border.light },
-                            ]}>
-                            <Text style={[styles.modalFieldLabel, { color: colors.text.secondary }]}>
-                              {formatLabel(key)}
-                            </Text>
-                            <Text style={[styles.modalFieldValue, { color: colors.text.primary }]}>
-                              {typeof value === "object" && value !== null
-                                ? JSON.stringify(value, null, 2)
-                                : String(value)}
-                            </Text>
-                          </View>
-                        );
-                      })}
+                              styles.modalSaveButton,
+                              {
+                                backgroundColor: colors.primary.DEFAULT,
+                                opacity: isSavingMappings ? 0.6 : 1,
+                              },
+                            ]}
+                            onPress={handleSaveLineItemMappings}
+                            disabled={isSavingMappings || isTrialExpired}
+                            activeOpacity={0.8}>
+                            {isSavingMappings ? (
+                              <>
+                                <ActivityIndicator size="small" color="#ffffff" />
+                                <Text style={styles.modalSaveButtonText}>Saving...</Text>
+                              </>
+                            ) : (
+                              <>
+                                <Ionicons name="save-outline" size={20} color="#ffffff" />
+                                <Text style={styles.modalSaveButtonText}>Save Mappings</Text>
+                              </>
+                            )}
+                          </TouchableOpacity>
+                        </View>
+                      )}
                     </View>
                   );
                 })()
@@ -1255,6 +1521,16 @@ export default function InvoiceDetailScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Custom Alert */}
+      <CustomAlert
+        visible={alertState.visible}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        buttons={alertState.buttons}
+        onDismiss={hideAlert}
+      />
     </SafeAreaView>
   );
 }
@@ -1274,7 +1550,7 @@ const getStyles = (colors: ReturnType<typeof getColors>) =>
       flex: 1,
     },
     scrollContent: {
-      paddingBottom: spacing.xl,
+      paddingBottom: 120, // Extra padding to account for bottom navigation (70px) + safe area
       paddingHorizontal: 20,
     },
     header: {
@@ -1492,6 +1768,24 @@ const getStyles = (colors: ReturnType<typeof getColors>) =>
       flex: 1,
       gap: 12,
     },
+    lineItemTextContainer: {
+      flex: 1,
+      gap: 6,
+    },
+    lineItemMappedBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-start',
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 8,
+      gap: 4,
+      marginTop: 4,
+    },
+    lineItemMappedText: {
+      fontSize: 11,
+      fontWeight: '600',
+    },
     lineItemNumberBadge: {
       width: 32,
       height: 32,
@@ -1699,6 +1993,120 @@ const getStyles = (colors: ReturnType<typeof getColors>) =>
       flex: 1,
       fontSize: 14,
       fontWeight: '600',
+    },
+    modalSection: {
+      marginBottom: 24,
+    },
+    modalSectionHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 8,
+    },
+    modalSectionTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+      marginBottom: 4,
+    },
+    modalSectionSubtitle: {
+      fontSize: 13,
+      marginBottom: 16,
+      lineHeight: 18,
+    },
+    predictionsContainer: {
+      gap: 12,
+      marginTop: 8,
+    },
+    predictionCard: {
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 8,
+    },
+    predictionContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    predictionLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+      gap: 12,
+    },
+    predictionRadio: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      borderWidth: 2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    predictionRadioInner: {
+      width: 12,
+      height: 12,
+      borderRadius: 6,
+      backgroundColor: '#ffffff',
+    },
+    predictionInfo: {
+      flex: 1,
+    },
+    predictionAccountName: {
+      fontSize: 15,
+      fontWeight: '600',
+      marginBottom: 4,
+    },
+    predictionAccountCode: {
+      fontSize: 13,
+      marginBottom: 2,
+    },
+    predictionConfidence: {
+      fontSize: 12,
+      marginTop: 2,
+    },
+    mappedBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 12,
+      gap: 6,
+    },
+    mappedBadgeText: {
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    noPredictionsContainer: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 32,
+      gap: 12,
+    },
+    noPredictionsText: {
+      fontSize: 14,
+      textAlign: 'center',
+      lineHeight: 20,
+    },
+    modalSaveContainer: {
+      marginTop: 24,
+      paddingTop: 20,
+      borderTopWidth: 1,
+      borderTopColor: colors.border.light,
+    },
+    modalSaveButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 14,
+      borderRadius: 12,
+      gap: 8,
+    },
+    modalSaveButtonText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: '#ffffff',
+    },
+    accountSelectorContainer: {
+      marginTop: 16,
     },
   });
 
