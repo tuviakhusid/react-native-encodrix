@@ -3,6 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import {
+  AlertTriangle,
   ArrowRight,
   Bell,
   CheckCircle2,
@@ -11,14 +12,17 @@ import {
   FileText,
   Filter,
   Moon,
+  Shield,
   Sun,
-  Trash2
+  Trash2,
+  X
 } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Image,
+  Linking,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -59,6 +63,8 @@ const GET_CURRENT_USER_DATA = gql`
       organization_name: organizationName
       trialDaysRemaining
       isTrialExpired
+      isTrial
+      trialShouldShowWarning
     }
   }
 `;
@@ -101,6 +107,9 @@ const GET_PROCESSED_DOCUMENTS = gql`
         s3Urls
         invoiceDataId
         issueDate
+        orgName
+        clientName
+        businessName
       }
       totalDocuments
       inProgressCount
@@ -141,6 +150,8 @@ interface Document {
   s3Urls: string[];
   invoiceDataId?: string;
   issueDate?: string;
+  orgName?: string;
+  clientName?: string;
 }
 
 type Notification = {
@@ -346,6 +357,7 @@ export default function DashboardScreen() {
   
   const [showFilterSheet, setShowFilterSheet] = useState(false);
   const [showNotificationDrawer, setShowNotificationDrawer] = useState(false);
+  const [isTrialWarningDismissed, setIsTrialWarningDismissed] = useState(false);
   const { theme, toggleTheme } = useTheme();
   const colors = getColors(theme);
   const styles = getStyles(colors);
@@ -389,6 +401,22 @@ export default function DashboardScreen() {
   });
 
   const isTrialExpired = userData?.getMyProfile?.trialDaysRemaining === 0 || userData?.getMyProfile?.isTrialExpired;
+  const trialDaysRemaining = userData?.getMyProfile?.trialDaysRemaining ?? 0;
+  const isTrial = userData?.getMyProfile?.isTrial ?? false;
+  const trialShouldShowWarning = userData?.getMyProfile?.trialShouldShowWarning ?? false;
+  
+  // Trial warning logic
+  const showTrialWarning = isTrial && !isTrialWarningDismissed;
+  const shouldShowWarning = showTrialWarning && (trialDaysRemaining === 0 || (trialDaysRemaining > 0 && trialShouldShowWarning));
+  const shouldShowExpiredCard = isTrialExpired && isTrial;
+  
+  const handleSubscribePress = () => {
+    // Open web app subscription page
+    const webAppUrl = "https://app.encodrix.com"; // Update with actual web app URL
+    Linking.openURL(webAppUrl).catch((err) => {
+      Alert.alert("Error", "Unable to open subscription page. Please visit the web app to subscribe.");
+    });
+  };
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -723,7 +751,7 @@ export default function DashboardScreen() {
                 {item.documentName || "Untitled Invoice"}
               </Text>
               <Text style={[styles.invoiceVendor, { color: colors.text.secondary }]} numberOfLines={1}>
-                {vendorName}
+                Client: {item.businessName}
               </Text>
               <View style={styles.infoRow}>
                 <Text style={[styles.invoiceDate, { color: colors.text.muted }]}>
@@ -828,6 +856,66 @@ export default function DashboardScreen() {
     return <DashboardSkeleton colors={colors} />;
   }
 
+  // Show trial expired card if trial is expired
+  if (shouldShowExpiredCard) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background.DEFAULT }]}>
+        <ScrollView
+          contentContainerStyle={styles.trialExpiredScrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.trialExpiredContainer}>
+            <View
+              style={[
+                styles.trialExpiredCard,
+                {
+                  backgroundColor: colors.background.card,
+                  borderColor: colors.border.DEFAULT,
+                },
+              ]}
+            >
+              {/* Icon */}
+              <View
+                style={[
+                  styles.trialExpiredIconContainer,
+                  { backgroundColor: colors.background.gray },
+                ]}
+              >
+                <AlertTriangle size={48} color={colors.status.rejected} strokeWidth={2.5} />
+              </View>
+
+              {/* Title */}
+              <Text style={[styles.trialExpiredTitle, { color: colors.text.primary }]}>
+                Trial Expired
+              </Text>
+
+              {/* Description */}
+              <Text style={[styles.trialExpiredDescription, { color: colors.text.secondary }]}>
+                Your trial has expired. Subscribe via the web app to continue processing invoices and access your data.
+              </Text>
+
+              {/* Key Points */}
+              <View style={styles.trialExpiredPoints}>
+                <View style={styles.trialExpiredPoint}>
+                  <Shield size={18} color={colors.primary.DEFAULT} strokeWidth={2.5} />
+                  <Text style={[styles.trialExpiredPointText, { color: colors.text.secondary }]}>
+                    Your data is safe and preserved
+                  </Text>
+                </View>
+                <View style={styles.trialExpiredPoint}>
+                  <CheckCircle2 size={18} color={colors.stats.green.text} strokeWidth={2.5} />
+                  <Text style={[styles.trialExpiredPointText, { color: colors.text.secondary }]}>
+                    Instant access after subscription
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
   if (error) {
     const handleRetry = async () => {
       await handleLogout();
@@ -865,6 +953,46 @@ export default function DashboardScreen() {
             colors={[colors.primary.DEFAULT]}
           />
         }>
+        {/* Trial Warning Banner - Only show when trial is expiring (not expired) */}
+        {shouldShowWarning && !isTrialExpired && (
+          <View
+            style={[
+              styles.trialWarningBanner,
+              {
+                backgroundColor: colors.stats.yellow.bg,
+              },
+            ]}
+          >
+            <View style={styles.trialWarningContent}>
+              <AlertTriangle
+                size={16}
+                color={colors.stats.yellow.text}
+                strokeWidth={2.5}
+              />
+              <Text
+                style={[
+                  styles.trialWarningText,
+                  {
+                    color: colors.stats.yellow.text,
+                  },
+                ]}
+              >
+                Your trial is expiring soon - {trialDaysRemaining} {trialDaysRemaining === 1 ? "day" : "days"} remaining
+              </Text>
+              <TouchableOpacity
+                onPress={() => setIsTrialWarningDismissed(true)}
+                style={styles.trialWarningDismiss}
+                activeOpacity={0.7}
+              >
+                <X
+                  size={14}
+                  color={colors.stats.yellow.text}
+                  strokeWidth={2.5}
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <Text style={[styles.greeting, { color: colors.text.secondary }]}>
@@ -1260,6 +1388,10 @@ const getStyles = (colors: ReturnType<typeof getColors>) =>
     invoiceDate: {
       fontSize: 12,
     },
+    invoiceOrgClient: {
+      fontSize: 11,
+      marginBottom: 2,
+    },
     invoiceMetaRow: {
       flexDirection: "row",
       flexWrap: "wrap",
@@ -1367,6 +1499,98 @@ const getStyles = (colors: ReturnType<typeof getColors>) =>
       fontSize: typography.sizes.md,
       fontWeight: typography.weights.semibold,
       fontFamily: typography.fontFamily.semibold,
+    },
+    trialWarningBanner: {
+      marginHorizontal: 20,
+      marginTop: 12,
+      marginBottom: 8,
+      borderRadius: 12,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+    },
+    trialWarningContent: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    trialWarningText: {
+      flex: 1,
+      fontSize: 13,
+      fontWeight: "600",
+    },
+    trialWarningDismiss: {
+      padding: 4,
+    },
+    trialExpiredScrollContent: {
+      flexGrow: 1,
+      justifyContent: "center",
+      padding: 20,
+    },
+    trialExpiredContainer: {
+      width: "100%",
+      maxWidth: 400,
+      alignSelf: "center",
+    },
+    trialExpiredCard: {
+      borderRadius: 16,
+      borderWidth: 1,
+      padding: 24,
+      alignItems: "center",
+      ...shadows.md,
+    },
+    trialExpiredIconContainer: {
+      width: 72,
+      height: 72,
+      borderRadius: 36,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 20,
+    },
+    trialExpiredTitle: {
+      fontSize: 22,
+      fontWeight: "700",
+      textAlign: "center",
+      marginBottom: 12,
+    },
+    trialExpiredDescription: {
+      fontSize: 15,
+      textAlign: "center",
+      lineHeight: 22,
+      marginBottom: 24,
+    },
+    trialExpiredPoints: {
+      width: "100%",
+      gap: 12,
+      marginBottom: 24,
+      alignItems: "center",
+    },
+    trialExpiredPoint: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 10,
+      width: "100%",
+    },
+    trialExpiredPointText: {
+      fontSize: 14,
+      lineHeight: 20,
+      textAlign: "center",
+    },
+    trialExpiredButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      paddingVertical: 14,
+      paddingHorizontal: 24,
+      borderRadius: 12,
+      width: "100%",
+      ...shadows.md,
+    },
+    trialExpiredButtonText: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: "#ffffff",
     },
   });
 

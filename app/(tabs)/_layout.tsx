@@ -1,3 +1,4 @@
+import { gql, useQuery } from "@apollo/client";
 import { Tabs } from "expo-router";
 import * as Haptics from "expo-haptics";
 import {
@@ -14,6 +15,7 @@ import {
   StyleSheet,
   Text,
   ViewStyle,
+  Alert,
 } from "react-native";
 import Animated, {
   useAnimatedStyle,
@@ -24,6 +26,15 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { getColors } from "../../src/constants/theme";
 import { useTheme } from "../../src/context/theme-context";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
+
+const GET_CURRENT_USER_DATA = gql`
+  query GetCurrentUserData {
+    getMyProfile {
+      trialDaysRemaining
+      isTrialExpired
+    }
+  }
+`;
 
 const TAB_CONFIG = [
   { name: "dashboard", label: "Home", icon: Home },
@@ -52,7 +63,8 @@ function TabItem({
   onLongPress,
   colors,
   config,
-}: TabItemProps) {
+  disabled,
+}: TabItemProps & { disabled?: boolean }) {
   const scale = useSharedValue(1);
   const iconTranslateY = useSharedValue(0);
 
@@ -66,6 +78,14 @@ function TabItem({
   });
 
   const handlePress = () => {
+    if (disabled) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert(
+        "Trial Expired",
+        "Your free trial has expired. Please subscribe to continue using this feature."
+      );
+      return;
+    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     scale.value = withSpring(0.9, { damping: 15 }, () => {
       scale.value = withSpring(1, { damping: 15 });
@@ -89,14 +109,16 @@ function TabItem({
         onPress={handlePress}
         onLongPress={onLongPress}
         style={styles.centerButtonContainer}
-        activeOpacity={0.8}
+        activeOpacity={disabled ? 0.5 : 0.8}
+        disabled={disabled}
       >
         <Animated.View
           style={[
             styles.centerButton,
             {
-              backgroundColor: colors.primary.DEFAULT,
-              shadowColor: colors.primary.DEFAULT,
+              backgroundColor: disabled ? colors.text.muted : colors.primary.DEFAULT,
+              shadowColor: disabled ? colors.text.muted : colors.primary.DEFAULT,
+              opacity: disabled ? 0.6 : 1,
             },
             animatedIconStyle as ViewStyle,
           ]}
@@ -106,7 +128,10 @@ function TabItem({
         <Text
           style={[
             styles.centerLabel,
-            { color: isFocused ? colors.primary.DEFAULT : colors.text.secondary },
+            { 
+              color: isFocused ? (disabled ? colors.text.muted : colors.primary.DEFAULT) : colors.text.secondary,
+              opacity: disabled ? 0.6 : 1,
+            },
           ]}
         >
           {config.label}
@@ -121,16 +146,23 @@ function TabItem({
       onPress={handlePress}
       onLongPress={onLongPress}
       style={styles.tabItem}
-      activeOpacity={0.7}
+      activeOpacity={disabled ? 0.5 : 0.7}
+      disabled={disabled}
     >
       <Animated.View style={[styles.iconContainer, animatedIconStyle as ViewStyle]}>
         <Icon
           size={24}
-          color={isFocused ? colors.primary.DEFAULT : colors.text.secondary}
+          color={
+            disabled
+              ? colors.text.muted
+              : isFocused
+              ? colors.primary.DEFAULT
+              : colors.text.secondary
+          }
           strokeWidth={isFocused ? 2.5 : 2}
         />
         {/* Active indicator dot */}
-        {isFocused && (
+        {isFocused && !disabled && (
           <View
             style={[styles.activeIndicator, { backgroundColor: colors.primary.DEFAULT }]}
           />
@@ -140,8 +172,13 @@ function TabItem({
         style={[
           styles.label,
           {
-            color: isFocused ? colors.primary.DEFAULT : colors.text.secondary,
+            color: disabled
+              ? colors.text.muted
+              : isFocused
+              ? colors.primary.DEFAULT
+              : colors.text.secondary,
             fontWeight: isFocused ? "600" : "500",
+            opacity: disabled ? 0.6 : 1,
           },
         ]}
       >
@@ -155,11 +192,24 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const { theme } = useTheme();
   const colors = getColors(theme);
   const insets = useSafeAreaInsets();
+  
+  // Check trial status
+  const { data: userData } = useQuery(GET_CURRENT_USER_DATA, {
+    fetchPolicy: "cache-and-network",
+  });
+  const isTrialExpired = userData?.getMyProfile?.trialDaysRemaining === 0 || userData?.getMyProfile?.isTrialExpired;
 
   // Filter out hidden screens (like invoice-detail)
   const visibleRoutes = state.routes.filter((route) => {
     return !HIDDEN_SCREENS.includes(route.name);
   });
+  
+  // Tabs that should be disabled when trial is expired (except dashboard and settings)
+  const shouldDisableTab = (routeName: string) => {
+    if (!isTrialExpired) return false;
+    // Allow dashboard and settings even when trial is expired
+    return routeName !== "dashboard" && routeName !== "settings";
+  };
 
   return (
     <View
@@ -205,6 +255,8 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             });
           };
 
+          const isDisabled = shouldDisableTab(route.name);
+
           return (
             <TabItem
               key={route.key}
@@ -215,6 +267,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
               onLongPress={onLongPress}
               colors={colors}
               config={config}
+              disabled={isDisabled}
             />
           );
         })}
