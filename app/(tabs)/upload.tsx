@@ -34,7 +34,9 @@ import {
   typography,
 } from "../../src/constants/theme";
 import { useTheme } from "../../src/context/theme-context";
+import { useUploadProgress } from "../../src/context/upload-progress-context";
 import * as Haptics from "expo-haptics";
+import { UploadProgressBanner } from "../../components/UploadProgressBanner";
 
 const UPLOAD_MULTIPLE = gql`
   mutation UploadMultiple($files: [Upload!]!, $branchId: String!) {
@@ -43,6 +45,7 @@ const UPLOAD_MULTIPLE = gql`
       message
       branchId
       folderId
+      taskIds
     }
   }
 `;
@@ -213,6 +216,7 @@ export default function UploadScreen() {
       fetchPolicy: "cache-and-network",
     }
   );
+  const { addTasks } = useUploadProgress();
 
   const isTrialExpired = userData?.getMyProfile?.trialDaysRemaining === 0 || userData?.getMyProfile?.isTrialExpired;
 
@@ -549,17 +553,15 @@ export default function UploadScreen() {
       });
 
       if (result.data?.uploadFile?.success) {
+        const taskIds = result.data.uploadFile.taskIds as string[] | undefined;
+        if (taskIds?.length) {
+          addTasks(taskIds);
+        }
+        setSelectedImages([]);
         Alert.alert(
-          "Success",
-          "Invoices uploaded successfully! Data extraction will begin shortly.",
-          [
-            {
-              text: "OK",
-              onPress: () => {
-                setSelectedImages([]);
-              },
-            },
-          ]
+          "Upload complete",
+          "Invoices uploaded. Extraction in progress — we’ll refresh your list when ready.",
+          [{ text: "OK" }]
         );
       } else {
         throw new Error(result.data?.uploadFile?.message || "Upload failed");
@@ -592,6 +594,7 @@ export default function UploadScreen() {
         contentContainerStyle={{ paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
       >
+        <UploadProgressBanner />
         <View style={styles.header}>
           <Text style={[styles.headerTitle, { color: colors.text.primary }]}>
             Scan Invoice

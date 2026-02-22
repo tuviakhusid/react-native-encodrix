@@ -13,6 +13,7 @@ import { useEffect } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { getColors } from "../src/constants/theme";
 import { ThemeProvider, useTheme } from "../src/context/theme-context";
+import { UploadProgressProvider } from "../src/context/upload-progress-context";
 import { apolloClient } from "../src/lib/apollo/apolloClient";
 
 // Import gesture handler at the top level (required for React Native)
@@ -57,8 +58,9 @@ function AppContent() {
 
   return (
     <ApolloProvider client={apolloClient}>
-      <StatusBar style={theme === "dark" ? "light" : "dark"} />
-      <Stack
+      <UploadProgressProvider>
+        <StatusBar style={theme === "dark" ? "light" : "dark"} />
+        <Stack
         screenOptions={{
           headerStyle: {
             backgroundColor: colors.primary.brandGradient[0],
@@ -75,6 +77,7 @@ function AppContent() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="profile" options={{ headerShown: false }} />
       </Stack>
+      </UploadProgressProvider>
     </ApolloProvider>
   );
 }

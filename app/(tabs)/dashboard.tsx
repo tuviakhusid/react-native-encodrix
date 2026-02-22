@@ -40,6 +40,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import FilterBottomSheet from "../../components/FilterBottomSheet";
 import NotificationDrawer from "../../components/NotificationDrawer";
 import ProfileBottomSheet from "../../components/ProfileBottomSheet";
+import { UploadProgressBanner } from "../../components/UploadProgressBanner";
 import {
   borderRadius,
   getColors,
@@ -48,6 +49,7 @@ import {
   typography,
 } from "../../src/constants/theme";
 import { useTheme } from "../../src/context/theme-context";
+import { useUploadProgress } from "../../src/context/upload-progress-context";
 import authService from "../../src/lib/services/auth.service";
 import uploadService from "../../src/lib/services/upload.service";
 
@@ -374,6 +376,7 @@ export default function DashboardScreen() {
   const [deleteDocument] = useMutation(DELETE_DOCUMENT);
   const [processingDocumentId, setProcessingDocumentId] = useState<string | null>(null);
 
+  const { registerRefetch } = useUploadProgress();
   const { data, loading, error, refetch, networkStatus } = useQuery(GET_PROCESSED_DOCUMENTS, {
     variables: {
       status: appliedSelectedFilter
@@ -399,6 +402,11 @@ export default function DashboardScreen() {
   const { data: userData } = useQuery(GET_CURRENT_USER_DATA, {
     fetchPolicy: "cache-and-network",
   });
+
+  useEffect(() => {
+    registerRefetch(refetch);
+    return () => registerRefetch(undefined);
+  }, [registerRefetch, refetch]);
 
   const isTrialExpired = userData?.getMyProfile?.trialDaysRemaining === 0 || userData?.getMyProfile?.isTrialExpired;
   const trialDaysRemaining = userData?.getMyProfile?.trialDaysRemaining ?? 0;
@@ -993,6 +1001,8 @@ export default function DashboardScreen() {
             </View>
           </View>
         )}
+        {/* Upload / extraction in progress - visible on dashboard and upload tab */}
+        <UploadProgressBanner />
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <Text style={[styles.greeting, { color: colors.text.secondary }]}>
