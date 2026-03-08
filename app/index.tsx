@@ -5,6 +5,7 @@ import { Animated, Dimensions, StyleSheet, Text, View } from "react-native";
 import { getColors, typography } from "../src/constants/theme";
 import { useTheme } from "../src/context/theme-context";
 import authService from "../src/lib/services/auth.service";
+import guestInviteService from "../src/lib/services/guest-invite.service";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const { width, height } = Dimensions.get("window");
@@ -91,18 +92,20 @@ export default function Index() {
           return;
         }
 
-        // No valid authentication, go to login
+        // No valid authentication: prefer guest upload if invite code is stored
+        const hasGuestInvite = await guestInviteService.hasInviteCode();
         const elapsed = Date.now() - startTime;
         const remainingTime = Math.max(0, minSplashTime - elapsed);
         setTimeout(() => {
-          router.replace("/login");
+          router.replace(hasGuestInvite ? "/guest-upload" : "/login");
         }, remainingTime);
       } catch (error) {
         console.error("Auth check failed:", error);
+        const hasGuestInvite = await guestInviteService.hasInviteCode();
         const elapsed = Date.now() - startTime;
         const remainingTime = Math.max(0, minSplashTime - elapsed);
         setTimeout(() => {
-          router.replace("/login");
+          router.replace(hasGuestInvite ? "/guest-upload" : "/login");
         }, remainingTime);
       } finally {
         setLoading(false);

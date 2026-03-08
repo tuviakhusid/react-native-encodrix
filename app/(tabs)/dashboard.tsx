@@ -116,6 +116,7 @@ const GET_PROCESSED_DOCUMENTS = gql`
       totalDocuments
       inProgressCount
       completedCount
+      rejectedCount
       stageCount
       page
       pageSize
@@ -342,6 +343,8 @@ const getLast30DaysRange = () => {
 export default function DashboardScreen() {
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(20);
   
   // Applied filters (used in query)
   const [appliedSelectedFilter, setAppliedSelectedFilter] = useState<string | null>(null);
@@ -377,14 +380,14 @@ export default function DashboardScreen() {
   const [processingDocumentId, setProcessingDocumentId] = useState<string | null>(null);
 
   const { registerRefetch } = useUploadProgress();
-  const { data, loading, error, refetch, networkStatus } = useQuery(GET_PROCESSED_DOCUMENTS, {
+  const { data, loading, error, refetch, networkStatus, fetchMore } = useQuery(GET_PROCESSED_DOCUMENTS, {
     variables: {
       status: appliedSelectedFilter
         ? {
             equals: appliedSelectedFilter,
           }
         : {
-            notEquals: "completed",
+            // notEquals: "completed",
           },
       stageStatus: {},
       query: appliedSearchQuery || undefined,
@@ -452,7 +455,7 @@ export default function DashboardScreen() {
 
   const [profileSheetVisible, setProfileSheetVisible] = useState(false);
 
-  const totalDocuments = data?.documentsByStatus?.totalDocuments || 0;
+  const totalDocuments = (data?.documentsByStatus?.totalDocuments || 0) - (data?.documentsByStatus?.stageCount?.none || 0) - (data?.documentsByStatus?.rejectedCount || 0) || 0;
   const inProgressCount = data?.documentsByStatus?.inProgressCount || 0;
   const completedCount = data?.documentsByStatus?.completedCount || 0;
   const stageCount = (data?.documentsByStatus?.stageCount as any) || {};
@@ -461,7 +464,11 @@ export default function DashboardScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await refetch();
+    setCurrentPage(1);
+    await refetch({
+      page: 1,
+      pageSize,
+    });
     setRefreshing(false);
   };
 
@@ -495,9 +502,15 @@ export default function DashboardScreen() {
     setAppliedSearchQuery("");
     setAppliedFilterByDate("processing_date");
     setAppliedSelectedFilter(null);
+    setCurrentPage(1);
     
     // Refetch with reset values
-    setTimeout(() => refetch(), 100);
+    setTimeout(() => {
+      refetch({
+        page: 1,
+        pageSize,
+      });
+    }, 100);
   };
 
   const handleFilterApply = () => {
@@ -507,9 +520,15 @@ export default function DashboardScreen() {
     setAppliedSearchQuery(searchQuery);
     setAppliedFilterByDate(filterByDate);
     setAppliedSelectedFilter(selectedFilter);
+    setCurrentPage(1);
     
     // Refetch with new applied values
-    setTimeout(() => refetch(), 100);
+    setTimeout(() => {
+      refetch({
+        page: 1,
+        pageSize,
+      });
+    }, 100);
   };
 
   const getProceedButtonIcon = (item: Document): any => {
@@ -730,6 +749,40 @@ export default function DashboardScreen() {
   const allDocuments = data?.documentsByStatus?.documents || [];
   const documents = filterDocuments(allDocuments, selectedFilter);
 
+  const totalPages = data?.documentsByStatus?.totalPages || 1;
+  const canLoadMore = currentPage < totalPages;
+
+  const handleLoadMore = async () => {
+    if (!canLoadMore) return;
+    const nextPage = currentPage + 1;
+
+    await fetchMore({
+      variables: {
+        page: nextPage,
+        pageSize,
+      },
+      updateQuery: (previousResult, { fetchMoreResult }) => {
+        if (!fetchMoreResult?.documentsByStatus) {
+          return previousResult;
+        }
+
+        return {
+          ...previousResult,
+          documentsByStatus: {
+            ...previousResult.documentsByStatus,
+            ...fetchMoreResult.documentsByStatus,
+            documents: [
+              ...(previousResult.documentsByStatus?.documents || []),
+              ...(fetchMoreResult.documentsByStatus?.documents || []),
+            ],
+          },
+        };
+      },
+    });
+
+    setCurrentPage(nextPage);
+  };
+
   // Notification data - will be replaced with actual query when available
   const notifications: Notification[] = [];
   const unreadNotificationCount = notifications.filter((n) => !n.isSeen).length;
@@ -855,10 +908,11 @@ export default function DashboardScreen() {
     );
   };
 
-  // Show full page loading only on initial load, not on refetch
+  // Show full page loading only on initial load or full refetch (not on fetchMore)
   // NetworkStatus values: 1=loading, 4=refetch, 3=fetchMore
   const isInitialLoading = loading && networkStatus === 1 && !data;
-  const isRefetching = networkStatus === 4 || networkStatus === 3;
+  const isRefetching = networkStatus === 4;
+  const isFetchingMore = networkStatus === 3;
 
   if (isInitialLoading) {
     return <DashboardSkeleton colors={colors} />;
@@ -1083,8 +1137,8 @@ export default function DashboardScreen() {
             textColor={colors.stats.blue.text}
           />
           <StatCard
-            title="Extracting"
-            value={dataExtractionCount.toString()}
+            title="Processing"
+            value={inProgressCount.toString()}
             icon={Clock}
             color={colors.stats.yellow.text}
             bgColor={colors.stats.yellow.bg}
@@ -1147,6 +1201,34 @@ export default function DashboardScreen() {
               {documents.map((item: Document) => (
                 <View key={item.id}>{renderDocumentItem({ item })}</View>
               ))}
+
+              {canLoadMore && (
+                <View style={styles.loadMoreContainer}>
+                  <TouchableOpacity
+                    style={[
+                      styles.loadMoreButton,
+                      {
+                        backgroundColor: colors.background.card,
+                        borderColor: colors.border.DEFAULT,
+                      },
+                    ]}
+                    onPress={handleLoadMore}
+                    activeOpacity={0.7}
+                    disabled={isFetchingMore}
+                  >
+                    {isFetchingMore ? (
+                      <ActivityIndicator size="small" color={colors.primary.DEFAULT} />
+                    ) : (
+                      <>
+                        <Text style={[styles.loadMoreText, { color: colors.text.primary }]}>
+                          Load more invoices
+                        </Text>
+                        <ArrowRight size={16} color={colors.primary.DEFAULT} strokeWidth={2.5} />
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
           )}
         </View>
@@ -1358,6 +1440,25 @@ const getStyles = (colors: ReturnType<typeof getColors>) =>
     },
     invoiceList: {
       gap: 12,
+    },
+    loadMoreContainer: {
+      marginTop: 8,
+      paddingVertical: 8,
+    },
+    loadMoreButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      borderRadius: 999,
+      borderWidth: 1,
+      alignSelf: "center",
+    },
+    loadMoreText: {
+      fontSize: 14,
+      fontWeight: "600",
     },
     invoiceItem: {
       borderRadius: 16,

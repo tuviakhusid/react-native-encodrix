@@ -230,7 +230,7 @@ export default function FilterBottomSheet({
 
   const statusOptions = [
     { value: null, label: 'All' },
-    { value: 'in_progress', label: 'In Progress' },
+    { value: 'in_progress', label: 'Processing' },
     { value: 'completed', label: 'Completed' },
     { value: 'pending', label: 'Pending' },
   ];

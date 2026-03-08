@@ -54,15 +54,18 @@ const uploadLink = createUploadLink({
 const authLink = setContext(async (_, { headers }) => {
   try {
     const token = await SecureStore.getItemAsync('token');
-    const authHeaders = {
+    const authHeaders: Record<string, string> = {
       ...headers,
-      authorization: token ? `Bearer ${token}` : '',
     };
+    // Only set Authorization when we have a token (e.g. do not send it for guest upload)
+    if (token) {
+      authHeaders.authorization = `Bearer ${token}`;
+    }
 
-    // Log auth headers (without token value for security)
+    // Log auth headers (without token value for security); when no token, header is not sent
     console.log('[Auth Link] Headers:', {
       ...authHeaders,
-      authorization: authHeaders.authorization ? 'Bearer ***' : 'None',
+      ...(authHeaders.authorization ? { authorization: 'Bearer ***' } : {}),
     });
 
     return {

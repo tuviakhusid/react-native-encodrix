@@ -535,15 +535,11 @@ export default function UploadScreen() {
           name: file.name,
         });
 
-        // Log for debugging (remove in production)
-        console.log("Preparing file for upload:", {
-          uri: fileObject.uri.substring(0, 50) + "...",
-          type: fileObject.type,
-          name: fileObject.name,
-        });
-
         return fileObject;
       });
+
+      const fileMeta = selectedImages.map((f) => ({ name: f.name, type: f.type }));
+      console.log("[Upload] Request:", { branchId, fileCount: files.length, fileMeta });
 
       const result = await uploadFiles({
         variables: {
@@ -552,8 +548,16 @@ export default function UploadScreen() {
         },
       });
 
-      if (result.data?.uploadFile?.success) {
-        const taskIds = result.data.uploadFile.taskIds as string[] | undefined;
+      const uploadData = result.data?.uploadFile;
+      console.log("[Upload] Response:", {
+        success: uploadData?.success,
+        message: uploadData?.message,
+        taskIds: uploadData?.taskIds,
+        fullData: uploadData,
+      });
+
+      if (uploadData?.success) {
+        const taskIds = uploadData.taskIds as string[] | undefined;
         if (taskIds?.length) {
           addTasks(taskIds);
         }
@@ -564,10 +568,29 @@ export default function UploadScreen() {
           [{ text: "OK" }]
         );
       } else {
-        throw new Error(result.data?.uploadFile?.message || "Upload failed");
+        throw new Error(uploadData?.message || "Upload failed");
       }
     } catch (error: any) {
-      console.error("Upload error:", error);
+      const graphQLErrors = error?.graphQLErrors;
+      const networkError = error?.networkError;
+      const statusCode = networkError?.statusCode ?? networkError?.response?.status;
+      console.warn("[Upload] Error:", {
+        message: error?.message,
+        statusCode,
+        graphQLErrors: graphQLErrors?.map((e: any) => ({
+          message: e?.message,
+          extensions: e?.extensions,
+        })),
+        networkError: networkError
+          ? {
+              message: networkError?.message,
+              statusCode: networkError?.statusCode,
+              response: networkError?.response
+                ? { status: networkError.response.status, data: networkError.response.data }
+                : undefined,
+            }
+          : undefined,
+      });
       Alert.alert(
         "Upload Failed",
         error.message || "Failed to upload invoices. Please try again."

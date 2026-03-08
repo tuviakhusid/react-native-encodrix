@@ -61,22 +61,24 @@ function AppContent() {
       <UploadProgressProvider>
         <StatusBar style={theme === "dark" ? "light" : "dark"} />
         <Stack
-        screenOptions={{
-          headerStyle: {
-            backgroundColor: colors.primary.brandGradient[0],
-          },
-          headerTintColor: colors.background.light,
-          headerTitleStyle: {
-            fontWeight: "600",
-            fontFamily: "Manrope-SemiBold",
-          },
-        }}
-      >
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="login" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="profile" options={{ headerShown: false }} />
-      </Stack>
+          screenOptions={{
+            headerStyle: {
+              backgroundColor: colors.primary.brandGradient[0],
+            },
+            headerTintColor: colors.background.light,
+            headerTitleStyle: {
+              fontWeight: "600",
+              fontFamily: "Manrope-SemiBold",
+            },
+          }}
+        >
+          <Stack.Screen name="index" options={{ headerShown: false }} />
+          <Stack.Screen name="login" options={{ headerShown: false }} />
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="profile" options={{ headerShown: false }} />
+          <Stack.Screen name="invite/[inviteCode]" options={{ headerShown: false }} />
+          <Stack.Screen name="guest-upload" options={{ headerShown: false }} />
+        </Stack>
       </UploadProgressProvider>
     </ApolloProvider>
   );

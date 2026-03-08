@@ -5,6 +5,7 @@ import { useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -25,6 +26,7 @@ import { useTheme } from "../src/context/theme-context";
 import authService, {
   LoginCredentials,
 } from "../src/lib/services/auth.service";
+import guestInviteService from "../src/lib/services/guest-invite.service";
 import * as Haptics from "expo-haptics";
 
 export default function LoginScreen() {
@@ -38,10 +40,33 @@ export default function LoginScreen() {
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showGuestModal, setShowGuestModal] = useState(false);
+  const [guestInviteCode, setGuestInviteCode] = useState("");
+  const [guestLoading, setGuestLoading] = useState(false);
 
   // Helper function to detect if input is email or username
   const isEmail = (value: string): boolean => {
     return value.includes("@");
+  };
+
+  const handleGuestLogin = async () => {
+    const code = guestInviteCode.trim();
+    if (!code) {
+      Alert.alert("Error", "Please enter your invite code");
+      return;
+    }
+    setGuestLoading(true);
+    try {
+      await guestInviteService.setInviteCode(code);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setShowGuestModal(false);
+      setGuestInviteCode("");
+      router.replace("/guest-upload");
+    } catch (e: any) {
+      Alert.alert("Error", e?.message || "Could not save invite code");
+    } finally {
+      setGuestLoading(false);
+    }
   };
 
   const handleLogin = async () => {
@@ -208,10 +233,76 @@ export default function LoginScreen() {
                   {loading ? "Signing in..." : "Sign In"}
                 </Text>
               </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setShowGuestModal(true);
+                }}
+                activeOpacity={0.8}
+                style={[styles.guestButton, { borderColor: colors.border.DEFAULT }]}
+              >
+                <Text style={[styles.guestButtonText, { color: colors.text.secondary }]}>
+                  Guest login (invite code)
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <Modal
+        visible={showGuestModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowGuestModal(false)}
+      >
+        <TouchableOpacity
+          activeOpacity={1}
+          style={styles.modalOverlay}
+          onPress={() => setShowGuestModal(false)}
+        >
+          <View style={[styles.modalContent, { backgroundColor: colors.background.card, borderColor: colors.border.DEFAULT }]}>
+            <Text style={[styles.modalTitle, { color: colors.text.primary }]}>
+              Enter invite code
+            </Text>
+            <Text style={[styles.modalSubtitle, { color: colors.text.secondary }]}>
+              Enter the code you received via SMS or email to upload invoices without signing in.
+            </Text>
+            <View style={[styles.inputWrapper, { borderColor: colors.border.DEFAULT }]}>
+              <TextInput
+                style={[styles.input, { color: colors.text.primary }]}
+                placeholder="Invite code"
+                placeholderTextColor={colors.text.muted}
+                value={guestInviteCode}
+                onChangeText={setGuestInviteCode}
+                autoCapitalize="none"
+                autoComplete="off"
+              />
+            </View>
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonSecondary, { borderColor: colors.border.DEFAULT }]}
+                onPress={() => {
+                  setShowGuestModal(false);
+                  setGuestInviteCode("");
+                }}
+              >
+                <Text style={[styles.modalButtonTextSecondary, { color: colors.text.secondary }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, { backgroundColor: colors.primary.DEFAULT }]}
+                onPress={handleGuestLogin}
+                disabled={guestLoading}
+              >
+                <Text style={styles.modalButtonText}>
+                  {guestLoading ? "Opening…" : "Continue"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -323,6 +414,63 @@ const getStyles = (colors: ReturnType<typeof getColors>) =>
     },
     buttonText: {
       color: "#ffffff",
+      fontSize: 15,
+      fontWeight: "600",
+    },
+    guestButton: {
+      borderRadius: 12,
+      paddingVertical: 14,
+      paddingHorizontal: 24,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 12,
+      borderWidth: 1,
+    },
+    guestButtonText: {
+      fontSize: 14,
+      fontWeight: "600",
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.5)",
+      justifyContent: "center",
+      padding: 24,
+    },
+    modalContent: {
+      borderRadius: 16,
+      padding: 24,
+      borderWidth: 1,
+    },
+    modalTitle: {
+      fontSize: 20,
+      fontWeight: "700",
+      marginBottom: 8,
+    },
+    modalSubtitle: {
+      fontSize: 14,
+      marginBottom: 20,
+    },
+    modalActions: {
+      flexDirection: "row",
+      gap: 12,
+      marginTop: 20,
+    },
+    modalButton: {
+      flex: 1,
+      borderRadius: 12,
+      paddingVertical: 14,
+      alignItems: "center",
+    },
+    modalButtonSecondary: {
+      backgroundColor: "transparent",
+      borderWidth: 1,
+    },
+    modalButtonText: {
+      color: "#ffffff",
+      fontSize: 15,
+      fontWeight: "600",
+    },
+    modalButtonTextSecondary: {
       fontSize: 15,
       fontWeight: "600",
     },

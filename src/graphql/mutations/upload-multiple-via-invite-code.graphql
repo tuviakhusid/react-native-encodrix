@@ -1,0 +1,13 @@
+mutation UploadFileViaInvite($inviteUuid: String!, $files: [Upload!]!) {
+  uploadFileViaInvite(inviteUuid: $inviteUuid, files: $files) {
+    success
+    message
+    branchId
+    folderId
+    uploadedFiles
+    duplicateFiles
+    uploadedCount
+    duplicateCount
+    taskIds
+  }
+}
