@@ -31,8 +31,6 @@ const GET_PROCESSED_DOCUMENTS = gql`
     $status: StringFilter
     $stageStatus: StringFilter
     $query: String
-    $page: Int
-    $pageSize: Int
     $fromDate: String
     $toDate: String
     $filterByDate: String
@@ -41,8 +39,6 @@ const GET_PROCESSED_DOCUMENTS = gql`
       status: $status
       stageStatus: $stageStatus
       q: $query
-      page: $page
-      pageSize: $pageSize
       fromDate: $fromDate
       toDate: $toDate
       filterByDate: $filterByDate
@@ -69,8 +65,6 @@ const GET_PROCESSED_DOCUMENTS = gql`
       inProgressCount
       completedCount
       stageCount
-      page
-      pageSize
       totalPages
     }
   }
@@ -133,8 +127,6 @@ export default function DocumentsScreen() {
           notEquals: "completed",
         },
         stageStatus: {},
-        page: 1,
-        pageSize: 50,
         fromDate,
         toDate,
         filterByDate: "processing_date",
@@ -152,8 +144,6 @@ export default function DocumentsScreen() {
           equals: "completed",
         },
         stageStatus: {},
-        page: 1,
-        pageSize: 50,
         fromDate,
         toDate,
         filterByDate: "processing_date",

@@ -5,7 +5,7 @@ import { createUploadLink } from 'apollo-upload-client';
 import * as SecureStore from 'expo-secure-store';
 import authService from '../services/auth.service';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://test.encodrix.com/graphql/';
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://dev.encodrix.com/graphql/';
 
 // Network logging link to log all requests and responses
 const loggingLink = new ApolloLink((operation, forward) => {

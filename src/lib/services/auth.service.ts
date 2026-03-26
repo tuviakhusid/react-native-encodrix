@@ -1,7 +1,7 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://test.encodrix.com/api';
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://dev.encodrix.com/api';
 
 // Create a separate API instance for auth operations (no token injection)
 const authApi = axios.create({

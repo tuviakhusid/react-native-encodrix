@@ -76,8 +76,6 @@ const GET_PROCESSED_DOCUMENTS = gql`
     $status: StringFilter
     $stageStatus: StringFilter
     $query: String
-    $page: Int
-    $pageSize: Int
     $fromDate: String
     $toDate: String
     $filterByDate: String
@@ -86,8 +84,6 @@ const GET_PROCESSED_DOCUMENTS = gql`
       status: $status
       stageStatus: $stageStatus
       q: $query
-      page: $page
-      pageSize: $pageSize
       fromDate: $fromDate
       toDate: $toDate
       filterByDate: $filterByDate
@@ -118,8 +114,6 @@ const GET_PROCESSED_DOCUMENTS = gql`
       completedCount
       rejectedCount
       stageCount
-      page
-      pageSize
       totalPages
     }
   }
@@ -343,8 +337,6 @@ const getLast30DaysRange = () => {
 export default function DashboardScreen() {
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize] = useState(20);
   
   // Applied filters (used in query)
   const [appliedSelectedFilter, setAppliedSelectedFilter] = useState<string | null>(null);
@@ -391,8 +383,6 @@ export default function DashboardScreen() {
           },
       stageStatus: {},
       query: appliedSearchQuery || undefined,
-      page: 1,
-      pageSize: 20,
       fromDate: appliedFromDate || undefined,
       toDate: appliedToDate || undefined,
       filterByDate: appliedFilterByDate || undefined,
@@ -464,11 +454,7 @@ export default function DashboardScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    setCurrentPage(1);
-    await refetch({
-      page: 1,
-      pageSize,
-    });
+    await refetch();
     setRefreshing(false);
   };
 
@@ -502,14 +488,10 @@ export default function DashboardScreen() {
     setAppliedSearchQuery("");
     setAppliedFilterByDate("processing_date");
     setAppliedSelectedFilter(null);
-    setCurrentPage(1);
-    
+
     // Refetch with reset values
     setTimeout(() => {
-      refetch({
-        page: 1,
-        pageSize,
-      });
+      refetch();
     }, 100);
   };
 
@@ -520,14 +502,10 @@ export default function DashboardScreen() {
     setAppliedSearchQuery(searchQuery);
     setAppliedFilterByDate(filterByDate);
     setAppliedSelectedFilter(selectedFilter);
-    setCurrentPage(1);
-    
+
     // Refetch with new applied values
     setTimeout(() => {
-      refetch({
-        page: 1,
-        pageSize,
-      });
+      refetch();
     }, 100);
   };
 
@@ -749,38 +727,10 @@ export default function DashboardScreen() {
   const allDocuments = data?.documentsByStatus?.documents || [];
   const documents = filterDocuments(allDocuments, selectedFilter);
 
-  const totalPages = data?.documentsByStatus?.totalPages || 1;
-  const canLoadMore = currentPage < totalPages;
+  const canLoadMore = false;
 
   const handleLoadMore = async () => {
     if (!canLoadMore) return;
-    const nextPage = currentPage + 1;
-
-    await fetchMore({
-      variables: {
-        page: nextPage,
-        pageSize,
-      },
-      updateQuery: (previousResult, { fetchMoreResult }) => {
-        if (!fetchMoreResult?.documentsByStatus) {
-          return previousResult;
-        }
-
-        return {
-          ...previousResult,
-          documentsByStatus: {
-            ...previousResult.documentsByStatus,
-            ...fetchMoreResult.documentsByStatus,
-            documents: [
-              ...(previousResult.documentsByStatus?.documents || []),
-              ...(fetchMoreResult.documentsByStatus?.documents || []),
-            ],
-          },
-        };
-      },
-    });
-
-    setCurrentPage(nextPage);
   };
 
   // Notification data - will be replaced with actual query when available
