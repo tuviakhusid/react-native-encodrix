@@ -2,19 +2,19 @@ query GetProcessedDocuments(
   $status: StringFilter
   $stageStatus: StringFilter
   $query: String
-  $page: Int
-  $pageSize: Int
   $fromDate: String
+  $filterByDate: String = "processing_date"
   $toDate: String
+  $tags: [String!]
 ) {
   documentsByStatus(
+    filterByDate: $filterByDate
     status: $status
     stageStatus: $stageStatus
     q: $query
-    page: $page
-    pageSize: $pageSize
     fromDate: $fromDate
     toDate: $toDate
+    tags: $tags
   ) {
     documents {
       id
@@ -35,10 +35,21 @@ query GetProcessedDocuments(
       documentType
       documentHighLevelType
       workflowName
+      documentHighLevelType
       workflowDocumentInstanceId
       commentCount
       uploadedByDetails
+      currentStageType
       issueDate
+      tags
+      isMappingConfirmed
+      nextStage
+      workflowStatus
+      wfStageStatus
+      documentStatus
+      amount
+      invoiceNumber
+      reconciled
     }
     noWorkflowCount
     totalDocuments
@@ -48,8 +59,7 @@ query GetProcessedDocuments(
     pendingCount
     stageCount
     rejectedCount
-    page
-    pageSize
     totalPages
+    totalAmount
   }
 }

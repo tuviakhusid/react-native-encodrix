@@ -109,6 +109,8 @@ interface Branch {
   name: string;
 }
 
+const normalizeFileName = (name: string) => name.trim().toLowerCase();
+
 function FeatureCard({
   icon: Icon,
   title,
@@ -219,6 +221,35 @@ export default function UploadScreen() {
   const { addTasks } = useUploadProgress();
 
   const isTrialExpired = userData?.getMyProfile?.trialDaysRemaining === 0 || userData?.getMyProfile?.isTrialExpired;
+
+  const appendFilesAvoidingDuplicates = (incomingFiles: SelectedFile[]) => {
+    const existingNames = new Set(
+      selectedImages.map((file) => normalizeFileName(file.name))
+    );
+    const duplicateNames: string[] = [];
+    const uniqueFiles: SelectedFile[] = [];
+
+    incomingFiles.forEach((file) => {
+      const normalizedName = normalizeFileName(file.name);
+      if (existingNames.has(normalizedName)) {
+        duplicateNames.push(file.name);
+        return;
+      }
+      existingNames.add(normalizedName);
+      uniqueFiles.push(file);
+    });
+
+    if (duplicateNames.length > 0) {
+      Alert.alert(
+        "Duplicate invoices detected",
+        `These files are already selected: ${duplicateNames.join(", ")}. Please remove duplicates before uploading.`
+      );
+    }
+
+    if (uniqueFiles.length > 0) {
+      setSelectedImages((prev) => [...prev, ...uniqueFiles]);
+    }
+  };
 
   // Extract branches from user data
   useEffect(() => {
@@ -332,7 +363,7 @@ export default function UploadScreen() {
             isImage: true,
           };
         });
-        setSelectedImages([...selectedImages, ...newImages]);
+        appendFilesAvoidingDuplicates(newImages);
       }
     } catch (error) {
       Alert.alert("Error", "Failed to select invoice image");
@@ -393,7 +424,7 @@ export default function UploadScreen() {
             isImage,
           };
         });
-        setSelectedImages([...selectedImages, ...newFiles]);
+        appendFilesAvoidingDuplicates(newFiles);
       }
     } catch (error) {
       Alert.alert("Error", "Failed to select document");
@@ -434,7 +465,7 @@ export default function UploadScreen() {
           name: asset.fileName || `photo_${Date.now()}.jpg`,
           isImage: true,
         };
-        setSelectedImages([...selectedImages, newImage]);
+        appendFilesAvoidingDuplicates([newImage]);
       }
     } catch (error) {
       Alert.alert("Error", "Failed to capture invoice photo");
@@ -481,6 +512,17 @@ export default function UploadScreen() {
       Alert.alert(
         "No Invoices",
         "Please select at least one invoice file to upload"
+      );
+      return;
+    }
+
+    const normalizedNames = selectedImages.map((file) =>
+      normalizeFileName(file.name)
+    );
+    if (new Set(normalizedNames).size !== normalizedNames.length) {
+      Alert.alert(
+        "Duplicate invoices detected",
+        "Please remove duplicate files before uploading."
       );
       return;
     }
