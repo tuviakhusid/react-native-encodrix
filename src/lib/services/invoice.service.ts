@@ -3,7 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
 import { Alert, Linking } from 'react-native';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://dev.encodrix.com/api';
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://test.encodrix.com/api';
 
 // Create API instance with token injection
 const createApiInstance = async () => {
