@@ -1,6 +1,6 @@
 "use client";
 
-import { gql, useMutation, useQuery } from "@apollo/client";
+import { useMutation, useQuery } from "@apollo/client";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
@@ -25,40 +25,10 @@ import {
   typography,
 } from "../../src/constants/theme";
 import { useTheme } from "../../src/context/theme-context";
-
-const GET_CURRENT_USER_DATA = gql`
-  query GetCurrentUserData {
-    getMyProfile {
-      id
-      first_name: firstName
-      last_name: lastName
-      email
-      role
-      profile_image: profileImage
-      organization_name: organizationName
-    }
-  }
-`;
-
-const UPDATE_USER_PROFILE = gql`
-  mutation UpdateUserProfile(
-    $firstName: String
-    $lastName: String
-    $profileImage: String
-  ) {
-    updateMyProfile(
-      firstName: $firstName
-      lastName: $lastName
-      profileImage: $profileImage
-    ) {
-      id
-      first_name: firstName
-      last_name: lastName
-      email
-      profile_image: profileImage
-    }
-  }
-`;
+import {
+  GetCurrentUserDataDocument,
+  UpdateUserProfileDocument,
+} from "../../src/graphql/schema";
 
 export default function SettingsScreen() {
   const { theme } = useTheme();
@@ -71,11 +41,11 @@ export default function SettingsScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
 
-  const { data, loading, refetch } = useQuery(GET_CURRENT_USER_DATA, {
+  const { data, loading, refetch } = useQuery(GetCurrentUserDataDocument, {
     fetchPolicy: "cache-and-network",
   });
 
-  const [updateProfile] = useMutation(UPDATE_USER_PROFILE);
+  const [updateProfile] = useMutation(UpdateUserProfileDocument);
 
   useEffect(() => {
     if (data?.getMyProfile) {
@@ -146,13 +116,7 @@ export default function SettingsScreen() {
   const uploadProfileImage = async (uri: string) => {
     setIsUploadingImage(true);
     try {
-      // TODO: Implement profile image upload to your backend
-      // This typically involves:
-      // 1. Uploading the image file to a storage service (S3, etc.)
-      // 2. Getting the URL back
-      // 3. Updating the profile with the new image URL via GraphQL mutation
-      
-      // For now, we'll show a message that this feature needs backend implementation
+      // TODO: Implement profile image upload to backend
       Alert.alert(
         "Feature in Development",
         "Profile image upload will be available soon. Please use the web platform to update your profile picture."
@@ -175,9 +139,10 @@ export default function SettingsScreen() {
     try {
       await updateProfile({
         variables: {
-          firstName: firstName.trim(),
-          lastName: lastName.trim(),
-          profileImage: profileImage || undefined,
+          input: {
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
+          },
         },
       });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

@@ -4,5 +4,6 @@ mutation UploadMultiple($files: [Upload!]!, $branchId: String!) {
     message
     branchId
     folderId
+    taskIds
   }
 }

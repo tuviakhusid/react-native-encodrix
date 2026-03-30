@@ -1,4 +1,4 @@
-import { gql, useMutation, useQuery } from "@apollo/client";
+import { useMutation, useQuery } from "@apollo/client";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -31,29 +31,12 @@ import { useTheme } from "../../src/context/theme-context";
 import { useCustomAlert } from "../../src/hooks/useCustomAlert";
 import invoiceService from "../../src/lib/services/invoice.service";
 import uploadService from "../../src/lib/services/upload.service";
-
-const GET_EXTRACTED_DATA = gql`
-  query GetExtractedData($invoiceId: String!) {
-    getExractedData(invoiceId: $invoiceId)
-  }
-`;
-
-const DELETE_DOCUMENT = gql`
-  mutation DeleteDocument($documentId: String!, $deleteFromS3: Boolean!) {
-    deleteDocument(documentId: $documentId, deleteFromS3: $deleteFromS3) {
-      ok
-      deleted
-      error
-      message
-    }
-  }
-`;
-
-const UPDATE_EXTRACTED_DATA_MUTATION = gql`
-  mutation UpdateExtractedData($fileId: String!, $input: JSON!) {
-    updateExtractedData(fileId: $fileId, input: $input)
-  }
-`;
+import {
+  DeleteDocumentDocument,
+  GetCurrentUserDataDocument,
+  GetExtractedDataDocument,
+  UpdateExtractedDataDocument,
+} from "../../src/graphql/schema";
 
 interface ExtractedData {
   _id?: string;
@@ -123,7 +106,6 @@ export default function InvoiceDetailScreen() {
   const [comment, setComment] = useState("");
   const { alertState, showError, showSuccess, showWarning, hideAlert } = useCustomAlert();
   
-  // Line item mapping state
   const [lineItemMappings, setLineItemMappings] = useState<Map<number, {
     selectedAccountId?: string;
     predictions?: any[];
@@ -137,29 +119,20 @@ export default function InvoiceDetailScreen() {
     loading: queryLoading,
     error,
     refetch,
-  } = useQuery(GET_EXTRACTED_DATA, {
+  } = useQuery(GetExtractedDataDocument, {
     variables: { invoiceId: invoiceDataId },
     skip: !invoiceDataId,
     fetchPolicy: "network-only",
   });
 
-  const GET_CURRENT_USER_DATA = gql`
-    query GetCurrentUserData {
-      getMyProfile {
-        trialDaysRemaining
-        isTrialExpired
-      }
-    }
-  `;
-
-  const { data: userData } = useQuery(GET_CURRENT_USER_DATA, {
+  const { data: userData } = useQuery(GetCurrentUserDataDocument, {
     fetchPolicy: "cache-and-network",
   });
 
   const isTrialExpired = userData?.getMyProfile?.trialDaysRemaining === 0 || userData?.getMyProfile?.isTrialExpired;
 
-  const [deleteDocument, { loading: deleting }] = useMutation(DELETE_DOCUMENT);
-  const [updateExtractedData] = useMutation(UPDATE_EXTRACTED_DATA_MUTATION);
+  const [deleteDocument, { loading: deleting }] = useMutation(DeleteDocumentDocument);
+  const [updateExtractedData] = useMutation(UpdateExtractedDataDocument);
 
   useEffect(() => {
     if (data?.getExractedData) {
@@ -167,7 +140,6 @@ export default function InvoiceDetailScreen() {
       setExtractedData(extracted);
       setLoading(false);
       
-      // Initialize line item mappings from extracted data
       if (extracted?.extracted_data) {
         const dataObj = extracted.extracted_data;
         const lineItemFields = Object.keys(dataObj).filter(
@@ -348,10 +320,8 @@ export default function InvoiceDetailScreen() {
 
   const getLineItemIndex = (item: any): number => {
     return lineItems.findIndex((li: any) => {
-      // Try to match by key fields
       if (item.id && li.id) return item.id === li.id;
       if (item._id && li._id) return item._id === li._id;
-      // Fallback to description match
       const itemDesc = item.description || item.item_description || item.name;
       const liDesc = li.description || li.item_description || li.name;
       return itemDesc && liDesc && itemDesc === liDesc;
@@ -390,7 +360,6 @@ export default function InvoiceDetailScreen() {
         return;
       }
 
-      // Find the line items field
       const lineItemFields = Object.keys(dataObj).filter(
         (key) =>
           key.toLowerCase().includes("line") &&
@@ -408,12 +377,10 @@ export default function InvoiceDetailScreen() {
 
         const updatedItem = { ...item };
         
-        // Update selectedAccountId
         if (mapping.selectedAccountId) {
           updatedItem.selectedAccountId = mapping.selectedAccountId;
         }
 
-        // Update predictions with is_confirmed flags
         if (mapping.predictions && Array.isArray(mapping.predictions)) {
           updatedItem.predictions = mapping.predictions.map((pred: any) => ({
             ...pred,
@@ -441,7 +408,6 @@ export default function InvoiceDetailScreen() {
         showSuccess("Success", "Line item mappings saved successfully");
         setHasUnsavedMappings(false);
         
-        // Refetch data to get updated state
         await refetch();
       } else {
         showError("Error", "Failed to save line item mappings");
@@ -455,7 +421,6 @@ export default function InvoiceDetailScreen() {
   };
 
   const getWorkflowInstanceId = (): string | null => {
-    // First, try to use the instance ID passed from dashboard
     if (workflowDocumentInstanceId) {
       console.log("getWorkflowInstanceId - Using passed workflowDocumentInstanceId:", workflowDocumentInstanceId);
       return workflowDocumentInstanceId;

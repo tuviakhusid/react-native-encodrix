@@ -1,71 +1,17 @@
-import { gql } from '@apollo/client';
 import * as SecureStore from 'expo-secure-store';
+import {
+  GetExtractedDataDocument,
+  ProcessStageActionDocument,
+  type GetExtractedDataQuery,
+  type ProcessStageActionMutation,
+} from '../../graphql/schema';
 import { apolloClient } from '../apollo/apolloClient';
 
-const GET_EXTRACTED_DATA = gql`
-  query GetExtractedData($invoiceId: String!) {
-    getExractedData(invoiceId: $invoiceId) 
-  }
-`;
+type ProcessStageActionResult = NonNullable<
+  ProcessStageActionMutation['processStageAction']
+>;
 
-const PROCESS_STAGE_ACTION = gql`
-  mutation ProcessStageAction(
-    $instanceId: String!
-    $action: String!
-    $comments: String
-  ) {
-    processStageAction(
-      instanceId: $instanceId
-      action: $action
-      comments: $comments
-    ) {
-      ok
-      action
-      completed
-      rejected
-      resumed
-      nextStage {
-        name
-        order
-        assignedTo
-        dueDays
-      }
-      workflowStatus
-      documentStatus
-      error
-      googleDriveResult
-    }
-  }
-`;
-
-interface ProcessStageActionResult {
-  ok: boolean;
-  action: string;
-  completed?: boolean | null;
-  rejected?: boolean | null;
-  resumed?: boolean | null;
-  nextStage?: {
-    name: string;
-    order: number;
-    assignedTo?: string | null;
-    dueDays?: number | null;
-  } | null;
-  workflowStatus?: string | null;
-  documentStatus?: string | null;
-  error?: string | null;
-  googleDriveResult?: string | null;
-}
-
-interface ExtractedData {
-    extracted_data?: {
-        vendor_name?: string;
-        total_amount?: string | number;
-        issue_date?: string;
-        [key: string]: any;
-    };
-    s3_url?: string;
-    [key: string]: any;
-}
+type ExtractedData = GetExtractedDataQuery['getExractedData'];
 
 class UploadService {
     async getExtractData(invoiceId: string): Promise<ExtractedData | null> {
@@ -75,7 +21,7 @@ class UploadService {
             }
 
             const { data } = await apolloClient.query({
-                query: GET_EXTRACTED_DATA,
+                query: GetExtractedDataDocument,
                 variables: { invoiceId },
                 fetchPolicy: 'network-only',
             });
@@ -117,7 +63,7 @@ class UploadService {
             }
 
             const { data, errors } = await apolloClient.mutate({
-                mutation: PROCESS_STAGE_ACTION,
+                mutation: ProcessStageActionDocument,
                 variables: {
                     instanceId,
                     action,

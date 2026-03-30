@@ -1,0 +1,11 @@
+query SearchXeroAccounts($query: String, $page: Int, $pageSize: Int) {
+  getAllXeroAccounts(query: $query, page: $page, pageSize: $pageSize) {
+    results
+    total
+    page
+    pageSize
+    totalPages
+    hasNext
+    hasPrevious
+  }
+}

@@ -1,0 +1,13 @@
+query GetUploadedInvoiceStatus($taskIds: [String!]!) {
+  multipleTasksStatus(taskIds: $taskIds) {
+    taskId
+    status
+    progress {
+      current
+      total
+      stage
+    }
+    result
+    error
+  }
+}

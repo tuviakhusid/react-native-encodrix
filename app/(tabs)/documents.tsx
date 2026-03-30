@@ -1,6 +1,7 @@
 "use client";
 
-import { gql, useQuery } from "@apollo/client";
+import { useQuery } from "@apollo/client";
+import { GetProcessedDocumentsDocument } from "../../src/graphql/schema";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
@@ -25,56 +26,6 @@ import {
   typography,
 } from "../../src/constants/theme";
 import { useTheme } from "../../src/context/theme-context";
-
-const GET_PROCESSED_DOCUMENTS = gql`
-  query GetProcessedDocuments(
-    $status: StringFilter
-    $stageStatus: StringFilter
-    $query: String
-    $page: Int
-    $pageSize: Int
-    $fromDate: String
-    $toDate: String
-    $filterByDate: String
-  ) {
-    documentsByStatus(
-      status: $status
-      stageStatus: $stageStatus
-      q: $query
-      page: $page
-      pageSize: $pageSize
-      fromDate: $fromDate
-      toDate: $toDate
-      filterByDate: $filterByDate
-    ) {
-      documents {
-        id
-        documentName
-        documentType
-        documentHighLevelType
-        workflowStatus
-        wfStageStatus
-        workflowDocumentInstanceId
-        isMappingConfirmed
-        nextStage
-        createdAt
-        updatedAt
-        businessName
-        fileFormat
-        s3Urls
-        invoiceDataId
-        issueDate
-      }
-      totalDocuments
-      inProgressCount
-      completedCount
-      stageCount
-      page
-      pageSize
-      totalPages
-    }
-  }
-`;
 
 interface Document {
   id: string;
@@ -126,15 +77,13 @@ export default function DocumentsScreen() {
   const { fromDate, toDate } = getLast30DaysRange();
 
   const { data: inProgressData, loading: inProgressLoading, refetch: refetchInProgress } = useQuery(
-    GET_PROCESSED_DOCUMENTS,
+    GetProcessedDocumentsDocument,
     {
       variables: {
         status: {
           notEquals: "completed",
         },
         stageStatus: {},
-        page: 1,
-        pageSize: 50,
         fromDate,
         toDate,
         filterByDate: "processing_date",
@@ -145,15 +94,13 @@ export default function DocumentsScreen() {
   );
 
   const { data: completedData, loading: completedLoading, refetch: refetchCompleted } = useQuery(
-    GET_PROCESSED_DOCUMENTS,
+    GetProcessedDocumentsDocument,
     {
       variables: {
         status: {
           equals: "completed",
         },
         stageStatus: {},
-        page: 1,
-        pageSize: 50,
         fromDate,
         toDate,
         filterByDate: "processing_date",

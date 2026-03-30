@@ -1,4 +1,4 @@
-import { gql, useMutation, useQuery } from "@apollo/client";
+import { useMutation, useQuery } from "@apollo/client";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
@@ -52,89 +52,11 @@ import { useTheme } from "../../src/context/theme-context";
 import { useUploadProgress } from "../../src/context/upload-progress-context";
 import authService from "../../src/lib/services/auth.service";
 import uploadService from "../../src/lib/services/upload.service";
-
-const GET_CURRENT_USER_DATA = gql`
-  query GetCurrentUserData {
-    getMyProfile {
-      id
-      first_name: firstName
-      last_name: lastName
-      email
-      role
-      profile_image: profileImage
-      organization_name: organizationName
-      trialDaysRemaining
-      isTrialExpired
-      isTrial
-      trialShouldShowWarning
-    }
-  }
-`;
-
-const GET_PROCESSED_DOCUMENTS = gql`
-  query GetProcessedDocuments(
-    $status: StringFilter
-    $stageStatus: StringFilter
-    $query: String
-    $page: Int
-    $pageSize: Int
-    $fromDate: String
-    $toDate: String
-    $filterByDate: String
-  ) {
-    documentsByStatus(
-      status: $status
-      stageStatus: $stageStatus
-      q: $query
-      page: $page
-      pageSize: $pageSize
-      fromDate: $fromDate
-      toDate: $toDate
-      filterByDate: $filterByDate
-    ) {
-      documents {
-        id
-        documentName
-        documentType
-        documentHighLevelType
-        workflowStatus
-        wfStageStatus
-        workflowDocumentInstanceId
-        isMappingConfirmed
-        nextStage
-        createdAt
-        updatedAt
-        businessName
-        fileFormat
-        s3Urls
-        invoiceDataId
-        issueDate
-        orgName
-        clientName
-        businessName
-      }
-      totalDocuments
-      inProgressCount
-      completedCount
-      rejectedCount
-      stageCount
-      page
-      pageSize
-      totalPages
-    }
-  }
-`;
-
-const DELETE_DOCUMENT = gql`
-  mutation DeleteDocument($documentId: String!, $deleteFromS3: Boolean!) {
-    deleteDocument(documentId: $documentId, deleteFromS3: $deleteFromS3) {
-      ok
-      deleted
-      error
-      message
-    }
-  }
-`;
+import {
+  DeleteDocumentDocument,
+  GetCurrentUserDataDocument,
+  GetProcessedDocumentsDocument,
+} from "../../src/graphql/schema";
 
 interface Document {
   id: string;
@@ -343,8 +265,6 @@ const getLast30DaysRange = () => {
 export default function DashboardScreen() {
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize] = useState(20);
   
   // Applied filters (used in query)
   const [appliedSelectedFilter, setAppliedSelectedFilter] = useState<string | null>(null);
@@ -376,11 +296,11 @@ export default function DashboardScreen() {
     setAppliedToDate(initialTo);
   }, []);
 
-  const [deleteDocument] = useMutation(DELETE_DOCUMENT);
+  const [deleteDocument] = useMutation(DeleteDocumentDocument);
   const [processingDocumentId, setProcessingDocumentId] = useState<string | null>(null);
 
   const { registerRefetch } = useUploadProgress();
-  const { data, loading, error, refetch, networkStatus, fetchMore } = useQuery(GET_PROCESSED_DOCUMENTS, {
+  const { data, loading, error, refetch, networkStatus, fetchMore } = useQuery(GetProcessedDocumentsDocument, {
     variables: {
       status: appliedSelectedFilter
         ? {
@@ -391,8 +311,6 @@ export default function DashboardScreen() {
           },
       stageStatus: {},
       query: appliedSearchQuery || undefined,
-      page: 1,
-      pageSize: 20,
       fromDate: appliedFromDate || undefined,
       toDate: appliedToDate || undefined,
       filterByDate: appliedFilterByDate || undefined,
@@ -402,7 +320,7 @@ export default function DashboardScreen() {
     notifyOnNetworkStatusChange: true, // Enable network status updates for refetching
   });
 
-  const { data: userData } = useQuery(GET_CURRENT_USER_DATA, {
+  const { data: userData } = useQuery(GetCurrentUserDataDocument, {
     fetchPolicy: "cache-and-network",
   });
 
@@ -464,11 +382,7 @@ export default function DashboardScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    setCurrentPage(1);
-    await refetch({
-      page: 1,
-      pageSize,
-    });
+    await refetch();
     setRefreshing(false);
   };
 
@@ -502,14 +416,10 @@ export default function DashboardScreen() {
     setAppliedSearchQuery("");
     setAppliedFilterByDate("processing_date");
     setAppliedSelectedFilter(null);
-    setCurrentPage(1);
-    
+
     // Refetch with reset values
     setTimeout(() => {
-      refetch({
-        page: 1,
-        pageSize,
-      });
+      refetch();
     }, 100);
   };
 
@@ -520,14 +430,10 @@ export default function DashboardScreen() {
     setAppliedSearchQuery(searchQuery);
     setAppliedFilterByDate(filterByDate);
     setAppliedSelectedFilter(selectedFilter);
-    setCurrentPage(1);
-    
+
     // Refetch with new applied values
     setTimeout(() => {
-      refetch({
-        page: 1,
-        pageSize,
-      });
+      refetch();
     }, 100);
   };
 
@@ -749,38 +655,10 @@ export default function DashboardScreen() {
   const allDocuments = data?.documentsByStatus?.documents || [];
   const documents = filterDocuments(allDocuments, selectedFilter);
 
-  const totalPages = data?.documentsByStatus?.totalPages || 1;
-  const canLoadMore = currentPage < totalPages;
+  const canLoadMore = false;
 
   const handleLoadMore = async () => {
     if (!canLoadMore) return;
-    const nextPage = currentPage + 1;
-
-    await fetchMore({
-      variables: {
-        page: nextPage,
-        pageSize,
-      },
-      updateQuery: (previousResult, { fetchMoreResult }) => {
-        if (!fetchMoreResult?.documentsByStatus) {
-          return previousResult;
-        }
-
-        return {
-          ...previousResult,
-          documentsByStatus: {
-            ...previousResult.documentsByStatus,
-            ...fetchMoreResult.documentsByStatus,
-            documents: [
-              ...(previousResult.documentsByStatus?.documents || []),
-              ...(fetchMoreResult.documentsByStatus?.documents || []),
-            ],
-          },
-        };
-      },
-    });
-
-    setCurrentPage(nextPage);
   };
 
   // Notification data - will be replaced with actual query when available

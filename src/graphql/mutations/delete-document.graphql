@@ -1,0 +1,8 @@
+mutation DeleteDocument($documentId: String!, $deleteFromS3: Boolean!) {
+  deleteDocument(documentId: $documentId, deleteFromS3: $deleteFromS3) {
+    ok
+    deleted
+    error
+    message
+  }
+}

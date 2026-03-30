@@ -1,4 +1,4 @@
-import { gql, useMutation } from "@apollo/client";
+import { useMutation } from "@apollo/client";
 import { ReactNativeFile } from "apollo-upload-client";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
@@ -32,22 +32,7 @@ import {
 } from "../src/constants/theme";
 import { useTheme } from "../src/context/theme-context";
 import guestInviteService from "../src/lib/services/guest-invite.service";
-
-const UPLOAD_FILE_VIA_INVITE = gql`
-  mutation UploadFileViaInvite($inviteUuid: String!, $files: [Upload!]!) {
-    uploadFileViaInvite(inviteUuid: $inviteUuid, files: $files) {
-      success
-      message
-      branchId
-      folderId
-      uploadedFiles
-      duplicateFiles
-      uploadedCount
-      duplicateCount
-      taskIds
-    }
-  }
-`;
+import { UploadFileViaInviteDocument } from "../src/graphql/schema";
 
 interface SelectedFile {
   uri: string;
@@ -125,7 +110,7 @@ export default function GuestUploadScreen() {
   const [selectedImages, setSelectedImages] = useState<SelectedFile[]>([]);
   const [uploading, setUploading] = useState(false);
 
-  const [uploadViaInvite] = useMutation(UPLOAD_FILE_VIA_INVITE);
+  const [uploadViaInvite] = useMutation(UploadFileViaInviteDocument);
 
   const appendFilesAvoidingDuplicates = (incomingFiles: SelectedFile[]) => {
     const existingNames = new Set(
