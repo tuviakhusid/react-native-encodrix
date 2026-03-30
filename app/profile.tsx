@@ -1,4 +1,4 @@
-import { gql, useQuery } from "@apollo/client";
+import { useQuery } from "@apollo/client";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
@@ -14,53 +14,7 @@ import {
     typography,
 } from "../src/constants/theme";
 import { useTheme } from "../src/context/theme-context";
-
-const GET_CURRENT_USER_DATA = gql`
-  query GetCurrentUserData {
-    getMyProfile {
-      id
-      first_name: firstName
-      last_name: lastName
-      email
-      role
-      profile_image: profileImage
-      organization_name: organizationName
-      organization_number: organizationNumber
-      organization_code: organizationCode
-      is_onboarding_complete: isOnboardingComplete
-      is_onboarding_email_sent: isOnboardingEmailSent
-      folders {
-        id
-        name
-        isActive
-      }
-      packageDetails {
-        packageName
-        features {
-          featureName
-          isIncluded
-        }
-      }
-      roleBranchAssignments {
-        roleId
-        roleName
-        permissions
-        branchInfo {
-          id
-          name
-        }
-        assignAll
-      }
-      licenses
-      subscription
-      isTrial
-      trialStartedAt
-      isTrialExpired
-      trialDaysRemaining
-      trialShouldShowWarning
-    }
-  }
-`;
+import { GetCurrentUserDataDocument } from "../src/graphql/schema";
 
 interface CollapsibleSectionProps {
   title: string;
@@ -134,7 +88,7 @@ export default function ProfileScreen() {
     branches: false,
   });
 
-  const { data, loading, error } = useQuery(GET_CURRENT_USER_DATA, {
+  const { data, loading, error } = useQuery(GetCurrentUserDataDocument, {
     fetchPolicy: "cache-and-network",
   });
 

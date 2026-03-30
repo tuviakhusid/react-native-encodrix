@@ -12,10 +12,15 @@
       "resizeMode": "contain",
       "backgroundColor": "#1e3a8a"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.encodrix.mobile"
+      "bundleIdentifier": "com.encodrix.mobile",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {

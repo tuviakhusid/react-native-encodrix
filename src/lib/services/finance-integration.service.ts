@@ -1,19 +1,5 @@
-import { gql } from '@apollo/client';
+import { SearchXeroAccountsDocument } from '../../graphql/schema';
 import { apolloClient } from '../apollo/apolloClient';
-
-const SEARCH_XERO_ACCOUNTS = gql`
-  query SearchXeroAccounts($query: String, $page: Int, $pageSize: Int) {
-    getAllXeroAccounts(query: $query, page: $page, pageSize: $pageSize) {
-      results
-      total
-      page
-      pageSize
-      totalPages
-      hasNext
-      hasPrevious
-    }
-  }
-`;
 
 interface XeroAccount {
   _id?: string;
@@ -47,7 +33,7 @@ class FinanceIntegrationService {
       }
 
       const { data, errors } = await apolloClient.query({
-        query: SEARCH_XERO_ACCOUNTS,
+        query: SearchXeroAccountsDocument,
         variables: {
           query: query.trim() || undefined,
           page: page || undefined,

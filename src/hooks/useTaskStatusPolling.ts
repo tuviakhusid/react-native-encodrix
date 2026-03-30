@@ -1,22 +1,7 @@
-import { gql, useLazyQuery } from "@apollo/client";
+import { useLazyQuery } from "@apollo/client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
-const GET_UPLOADED_INVOICE_STATUS = gql`
-  query GetUploadedInvoiceStatus($taskIds: [String!]!) {
-    multipleTasksStatus(taskIds: $taskIds) {
-      taskId
-      status
-      progress {
-        current
-        total
-        stage
-      }
-      result
-      error
-    }
-  }
-`;
+import { GetUploadedInvoiceStatusDocument } from "../graphql/schema";
 
 const STORAGE_KEY = "encodrix_active_tasks";
 const STORAGE_KEY_CLOSED = "encodrix_active_tasks_closed";
@@ -44,7 +29,7 @@ export function useTaskStatusPolling(onAllTasksComplete?: () => void) {
   const [closedTasks, setClosedTasks] = useState<Set<string>>(new Set());
   const hadActiveTasksRef = useRef(false);
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const [getTaskStatus] = useLazyQuery(GET_UPLOADED_INVOICE_STATUS, {
+  const [getTaskStatus] = useLazyQuery(GetUploadedInvoiceStatusDocument, {
     fetchPolicy: "network-only",
   });
 

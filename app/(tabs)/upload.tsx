@@ -14,8 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-// Camera permissions handled via ImagePicker
-import { gql, useMutation, useQuery } from "@apollo/client";
+import { useMutation, useQuery } from "@apollo/client";
 import { ReactNativeFile } from "apollo-upload-client";
 import * as SecureStore from "expo-secure-store";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -37,65 +36,10 @@ import { useTheme } from "../../src/context/theme-context";
 import { useUploadProgress } from "../../src/context/upload-progress-context";
 import * as Haptics from "expo-haptics";
 import { UploadProgressBanner } from "../../components/UploadProgressBanner";
-
-const UPLOAD_MULTIPLE = gql`
-  mutation UploadMultiple($files: [Upload!]!, $branchId: String!) {
-    uploadFile(input: { files: $files, branchId: $branchId }) {
-      success
-      message
-      branchId
-      folderId
-      taskIds
-    }
-  }
-`;
-
-const GET_CURRENT_USER_DATA = gql`
-  query GetCurrentUserData {
-    getMyProfile {
-      id
-      first_name: firstName
-      last_name: lastName
-      email
-      role
-      profile_image: profileImage
-      organization_name: organizationName
-      organization_number: organizationNumber
-      organization_code: organizationCode
-      is_onboarding_complete: isOnboardingComplete
-      is_onboarding_email_sent: isOnboardingEmailSent
-      folders {
-        id
-        name
-        isActive
-      }
-      packageDetails {
-        packageName
-        features {
-          featureName
-          isIncluded
-        }
-      }
-      roleBranchAssignments {
-        roleId
-        roleName
-        permissions
-        branchInfo {
-          id
-          name
-        }
-        assignAll
-      }
-      licenses
-      subscription
-      isTrial
-      trialStartedAt
-      isTrialExpired
-      trialDaysRemaining
-      trialShouldShowWarning
-    }
-  }
-`;
+import {
+  GetCurrentUserDataDocument,
+  UploadMultipleDocument,
+} from "../../src/graphql/schema";
 
 interface SelectedFile {
   uri: string;
@@ -211,9 +155,9 @@ export default function UploadScreen() {
   const [showBranchModal, setShowBranchModal] = useState(false);
   const [availableBranches, setAvailableBranches] = useState<Branch[]>([]);
 
-  const [uploadFiles] = useMutation(UPLOAD_MULTIPLE);
+  const [uploadFiles] = useMutation(UploadMultipleDocument);
   const { data: userData, loading: userLoading } = useQuery(
-    GET_CURRENT_USER_DATA,
+    GetCurrentUserDataDocument,
     {
       fetchPolicy: "cache-and-network",
     }
@@ -251,19 +195,16 @@ export default function UploadScreen() {
     }
   };
 
-  // Extract branches from user data
   useEffect(() => {
     if (userData?.getMyProfile?.roleBranchAssignments) {
       const branches: Branch[] = [];
       userData.getMyProfile.roleBranchAssignments.forEach((assignment: any) => {
         if (assignment.branchInfo) {
-          // Handle both array and single object cases
           const branchArray = Array.isArray(assignment.branchInfo)
             ? assignment.branchInfo
             : [assignment.branchInfo];
 
           branchArray.forEach((branch: Branch) => {
-            // Avoid duplicates and ensure branch has id and name
             if (
               branch?.id &&
               branch?.name &&
@@ -276,23 +217,19 @@ export default function UploadScreen() {
       });
       setAvailableBranches(branches);
 
-      // If only one branch, auto-select it
       if (branches.length === 1) {
         setSelectedBranch(branches[0]);
         SecureStore.setItemAsync("branchId", branches[0].id);
       } else if (branches.length > 1) {
-        // If multiple branches, check if we have a saved selection
         SecureStore.getItemAsync("branchId").then((savedBranchId) => {
           if (savedBranchId) {
             const savedBranch = branches.find((b) => b.id === savedBranchId);
             if (savedBranch) {
               setSelectedBranch(savedBranch);
             } else {
-              // Show modal to select branch
               setShowBranchModal(true);
             }
           } else {
-            // Show modal to select branch
             setShowBranchModal(true);
           }
         });
@@ -338,7 +275,6 @@ export default function UploadScreen() {
 
       if (!result.canceled && result.assets) {
         const newImages = result.assets.map((asset) => {
-          // Determine MIME type from asset
           let mimeType = "image/jpeg"; // default
           let extension = "jpg";
 
@@ -393,12 +329,10 @@ export default function UploadScreen() {
 
       if (!result.canceled && result.assets) {
         const newFiles = result.assets.map((asset) => {
-          // Determine MIME type from asset
           let mimeType = asset.mimeType || "application/octet-stream";
           const fileName = asset.name || asset.uri.split("/").pop() || "";
           const extension = fileName.split(".").pop()?.toLowerCase() || "";
 
-          // MIME type mapping for common document types
           const mimeMap: Record<string, string> = {
             pdf: "application/pdf",
             doc: "application/msword",
@@ -453,7 +387,6 @@ export default function UploadScreen() {
 
       if (!result.canceled && result.assets[0]) {
         const asset = result.assets[0];
-        // Determine MIME type from asset
         let mimeType = "image/jpeg"; // default
         if (asset.mimeType) {
           mimeType = asset.mimeType;
@@ -535,19 +468,14 @@ export default function UploadScreen() {
 
     setUploading(true);
     try {
-      // Use selected branch or get from secure store
       const branchId =
         selectedBranch?.id ||
         (await SecureStore.getItemAsync("branchId")) ||
         "default";
 
-      // For React Native with apollo-upload-client, we need to use ReactNativeFile
-      // This properly formats files for the backend which expects content_type attribute
       const files = selectedImages.map((file) => {
-        // Ensure we have a proper MIME type
         let mimeType = file.type || "application/octet-stream";
 
-        // If type is not set or invalid, try to infer from file name
         if (
           !mimeType ||
           mimeType === "image" ||
@@ -569,8 +497,6 @@ export default function UploadScreen() {
             mimeMap[extension || ""] || file.type || "application/octet-stream";
         }
 
-        // Use ReactNativeFile to properly format files for apollo-upload-client
-        // This ensures the backend receives file objects with content_type attribute
         const fileObject = new ReactNativeFile({
           uri: file.uri,
           type: mimeType,

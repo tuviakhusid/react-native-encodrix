@@ -67,11 +67,9 @@ export default function Index() {
 
     const checkAuth = async () => {
       try {
-        // Check if user has remember me enabled
         const hasRememberMe = await authService.hasRememberMe();
         const isAuthenticated = await authService.isAuthenticated();
 
-        // If remember me is enabled, validate and refresh token
         if (hasRememberMe && isAuthenticated) {
           const isValid = await authService.validateAndRefreshToken();
           if (isValid) {
@@ -83,7 +81,6 @@ export default function Index() {
             return;
           }
         } else if (isAuthenticated) {
-          // Token exists but remember me is not enabled
           const elapsed = Date.now() - startTime;
           const remainingTime = Math.max(0, minSplashTime - elapsed);
           setTimeout(() => {
@@ -92,7 +89,6 @@ export default function Index() {
           return;
         }
 
-        // No valid authentication: prefer guest upload if invite code is stored
         const hasGuestInvite = await guestInviteService.hasInviteCode();
         const elapsed = Date.now() - startTime;
         const remainingTime = Math.max(0, minSplashTime - elapsed);
@@ -119,19 +115,6 @@ export default function Index() {
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.background.DEFAULT }]}
     >
-      {/* Animated Background Elements */}
-      {/* <Animated.View
-        style={[
-          styles.backgroundCircle1,
-          {
-            opacity: fadeAnim.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0, 0.1],
-            }),
-          },
-        ]}
-      /> */}
-
       {/* Main Content */}
       <Animated.View
         style={[

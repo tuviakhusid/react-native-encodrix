@@ -44,7 +44,6 @@ export default function LoginScreen() {
   const [guestInviteCode, setGuestInviteCode] = useState("");
   const [guestLoading, setGuestLoading] = useState(false);
 
-  // Helper function to detect if input is email or username
   const isEmail = (value: string): boolean => {
     return value.includes("@");
   };
@@ -83,7 +82,6 @@ export default function LoginScreen() {
         rememberMe,
       };
 
-      // Set email or username based on input
       if (isEmail(identifier)) {
         credentials.email = identifier;
       } else {

@@ -32,6 +32,8 @@ query GetProcessedDocuments(
       documentName
       fileFormat
       businessName
+      orgName
+      clientName
       documentType
       documentHighLevelType
       workflowName

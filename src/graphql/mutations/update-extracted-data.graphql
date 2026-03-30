@@ -1,0 +1,3 @@
+mutation UpdateExtractedData($fileId: String!, $input: JSON!) {
+  updateExtractedData(fileId: $fileId, input: $input)
+}

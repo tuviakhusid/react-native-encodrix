@@ -1,4 +1,4 @@
-import { gql, useQuery } from "@apollo/client";
+import { useQuery } from "@apollo/client";
 import { Tabs } from "expo-router";
 import * as Haptics from "expo-haptics";
 import {
@@ -26,15 +26,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { getColors } from "../../src/constants/theme";
 import { useTheme } from "../../src/context/theme-context";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
-
-const GET_CURRENT_USER_DATA = gql`
-  query GetCurrentUserData {
-    getMyProfile {
-      trialDaysRemaining
-      isTrialExpired
-    }
-  }
-`;
+import { GetCurrentUserDataDocument } from "../../src/graphql/schema";
 
 const TAB_CONFIG = [
   { name: "dashboard", label: "Home", icon: Home },
@@ -194,7 +186,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   
   // Check trial status
-  const { data: userData } = useQuery(GET_CURRENT_USER_DATA, {
+  const { data: userData } = useQuery(GetCurrentUserDataDocument, {
     fetchPolicy: "cache-and-network",
   });
   const isTrialExpired = userData?.getMyProfile?.trialDaysRemaining === 0 || userData?.getMyProfile?.isTrialExpired;
